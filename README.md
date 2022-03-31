@@ -1,6 +1,4 @@
-# hypershift-blog
-
-Red Hat Hypershift on BareMetal
+# Red Hat Hypershift on BareMetal
 
 Hub cluster is compact cluster 3 control nodes
 
@@ -11,6 +9,7 @@ Configure AI using the following yaml
 
 
 ~~~bash
+cat << EOF > ~/agentserviceconfig.yaml
 apiVersion: agent-install.openshift.io/v1beta1
 kind: AgentServiceConfig
 metadata:
@@ -74,4 +73,12 @@ spec:
       url: >-
         https://mirror.openshift.com/pub/openshift-v4/dependencies/rhcos/4.10/4.10.3/rhcos-4.10.3-x86_64-live.x86_64.iso
       version: 410.84.202201251210-0
+EOF
+~~~
+
+~~~bash
+Patch a storageclass to default that can be consumed by the Infrastructure Operator
+
+$ oc patch storageclass ocs-storagecluster-ceph-rbd -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+storageclass.storage.k8s.io/ocs-storagecluster-ceph-rbd patched
 ~~~
