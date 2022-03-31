@@ -2,6 +2,12 @@
 
 <img src="high-level-overview.png" style="width: 800px;" border=0/>
 
+HyperShift is middleware for hosting OpenShift control planes at scale that solves for cost and time to provision, as well as portability cross cloud with strong separation of concerns between management and workloads. Clusters are fully compliant OpenShift Container Platform (OCP) clusters and are compatible with standard OCP and Kubernetes toolchains.  In the following blog I would like to show how one can enable and provision a Hypershift based cluster in OCP.
+
+Before we begin lets start by describing the existing environment of the hub OCP cluster.   This hub cluster is where the Hypershift operator will run and also the control plane of the secondary cluster we deploy with Hypershift.  It is a OCP 4.10.3 compact 3 node cluster running on baremetal.  The following operators have been installed for convience:
+
+
+
 Hub cluster is compact cluster 3 control nodes
 
 Has ODF installed although not required but some kind of storage will be needed for AI
