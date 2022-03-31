@@ -76,9 +76,106 @@ spec:
 EOF
 ~~~
 
-~~~bash
-Patch a storageclass to default that can be consumed by the Infrastructure Operator
 
+Patch a storageclass to default that can be consumed by the Infrastructure Operator
+~~~bash
 $ oc patch storageclass ocs-storagecluster-ceph-rbd -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
 storageclass.storage.k8s.io/ocs-storagecluster-ceph-rbd patched
 ~~~
+
+Also configure the provisioning configuration to watch all namespaces
+
+~~~bash
+$ oc patch provisioning provisioning-configuration --type merge -p '{"spec":{"watchAllNamespaces": true}}'
+provisioning.metal3.io/provisioning-configuration patched
+~~~
+
+~~~bash
+NAMESPACE=kni25
+CLUSTERNAME=kni25
+INFRAENV=kni25infra
+BASEDOMAIN=pemlab.rdu2.redhat.com
+SSHKEY=~/.ssh/id_rsa.pub
+PULLSECRETNAME=${INFRAENV}-pullsecret
+MACHINE_CIDR_CLUSTER=10.11.176.0/24
+OCP_RELEASE_VERSION="4.10.3"
+OCP_ARCH="x86_64"
+HYPERSHIFT_IMAGE=quay.io/hypershift/hypershift-operator:latest
+~~~
+
+~~~bash
+$ mkdir /tmp/kube
+$ cp kubeconfig-kni27 /tmp/kubeconfig/
+$ cd /tmp/kubeconfig/
+~~~
+
+~~~bash
+$ alias hypershift="podman run --net host --rm --entrypoint /usr/bin/hypershift -e KUBECONFIG=/working_dir/kubeconfig-kni27 -v $HOME/.ssh:/root/.ssh -v /tmp/kube:/working_dir $HYPERSHIFT_IMAGE"
+~~~
+
+~~~bash
+$ hypershift install --hypershift-image $HYPERSHIFT_IMAGE
+WARN[0000] error mounting subscriptions, skipping entry in /usr/share/containers/mounts.conf: getting host subscription data: failed to read subscriptions from "/usr/share/rhel/secrets": open /usr/share/rhel/secrets/rhsm/rhsm.conf: permission denied
+created PriorityClass /hypershift-control-plane
+created PriorityClass /hypershift-etcd
+created PriorityClass /hypershift-api-critical
+applied Namespace /hypershift
+applied ServiceAccount hypershift/operator
+applied ClusterRole /hypershift-operator
+applied ClusterRoleBinding /hypershift-operator
+applied Role hypershift/hypershift-operator
+applied RoleBinding hypershift/hypershift-operator
+applied Deployment hypershift/operator
+applied Service hypershift/operator
+applied Role hypershift/prometheus
+applied RoleBinding hypershift/prometheus
+applied ServiceMonitor hypershift/operator
+applied PrometheusRule hypershift/metrics
+applied CustomResourceDefinition /clusterresourcesetbindings.addons.cluster.x-k8s.io
+applied CustomResourceDefinition /clusterresourcesets.addons.cluster.x-k8s.io
+applied CustomResourceDefinition /clusterclasses.cluster.x-k8s.io
+applied CustomResourceDefinition /clusters.cluster.x-k8s.io
+applied CustomResourceDefinition /machinedeployments.cluster.x-k8s.io
+applied CustomResourceDefinition /machinehealthchecks.cluster.x-k8s.io
+applied CustomResourceDefinition /machinepools.cluster.x-k8s.io
+applied CustomResourceDefinition /machines.cluster.x-k8s.io
+applied CustomResourceDefinition /machinesets.cluster.x-k8s.io
+applied CustomResourceDefinition /agentclusters.capi-provider.agent-install.openshift.io
+applied CustomResourceDefinition /agentmachines.capi-provider.agent-install.openshift.io
+applied CustomResourceDefinition /agentmachinetemplates.capi-provider.agent-install.openshift.io
+applied CustomResourceDefinition /awsclustercontrolleridentities.infrastructure.cluster.x-k8s.io
+applied CustomResourceDefinition /awsclusterroleidentities.infrastructure.cluster.x-k8s.io
+applied CustomResourceDefinition /awsclusters.infrastructure.cluster.x-k8s.io
+applied CustomResourceDefinition /awsclusterstaticidentities.infrastructure.cluster.x-k8s.io
+applied CustomResourceDefinition /awsclustertemplates.infrastructure.cluster.x-k8s.io
+applied CustomResourceDefinition /awsfargateprofiles.infrastructure.cluster.x-k8s.io
+applied CustomResourceDefinition /awsmachinepools.infrastructure.cluster.x-k8s.io
+applied CustomResourceDefinition /awsmachines.infrastructure.cluster.x-k8s.io
+applied CustomResourceDefinition /awsmachinetemplates.infrastructure.cluster.x-k8s.io
+applied CustomResourceDefinition /awsmanagedmachinepools.infrastructure.cluster.x-k8s.io
+applied CustomResourceDefinition /azureclusteridentities.infrastructure.cluster.x-k8s.io
+applied CustomResourceDefinition /azureclusters.infrastructure.cluster.x-k8s.io
+applied CustomResourceDefinition /azuremachines.infrastructure.cluster.x-k8s.io
+applied CustomResourceDefinition /azuremachinetemplates.infrastructure.cluster.x-k8s.io
+applied CustomResourceDefinition /ibmpowervsclusters.infrastructure.cluster.x-k8s.io
+applied CustomResourceDefinition /ibmpowervsmachines.infrastructure.cluster.x-k8s.io
+applied CustomResourceDefinition /ibmpowervsmachinetemplates.infrastructure.cluster.x-k8s.io
+applied CustomResourceDefinition /ibmvpcclusters.infrastructure.cluster.x-k8s.io
+applied CustomResourceDefinition /ibmvpcmachines.infrastructure.cluster.x-k8s.io
+applied CustomResourceDefinition /ibmvpcmachinetemplates.infrastructure.cluster.x-k8s.io
+applied CustomResourceDefinition /kubevirtclusters.infrastructure.cluster.x-k8s.io
+applied CustomResourceDefinition /kubevirtmachines.infrastructure.cluster.x-k8s.io
+applied CustomResourceDefinition /kubevirtmachinetemplates.infrastructure.cluster.x-k8s.io
+applied CustomResourceDefinition /awsendpointservices.hypershift.openshift.io
+applied CustomResourceDefinition /hostedclusters.hypershift.openshift.io
+applied CustomResourceDefinition /hostedcontrolplanes.hypershift.openshift.io
+applied CustomResourceDefinition /nodepools.hypershift.openshift.io
+~~~
+
+~~~bash
+$ PATCH='[
+{"op":"add","path":"/rules/-","value":{"apiGroups":["extensions.hive.openshift.io"],"resources":["agentclusterinstalls"],"verbs":["*"]}}, {"op":"add","path":"/rules/-","value":{"apiGroups":["hive.openshift.io"],"resources":["clusterdeployments"],"verbs":["*"]}},
+{"op":"add","path":"/rules/-","value":{"apiGroups":["cluster.open-cluster-management.io"],"resources":["managedclustersets/join"],"verbs":["create"]}}
+ ]'
+~~~
+
