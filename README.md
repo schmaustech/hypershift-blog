@@ -1,6 +1,6 @@
 # Red Hat Hypershift on BareMetal
 
-<img src="high-level-overview.png" style="width: 640px;" border=0/>
+<img src="high-level-overview.png" style="width: 800px;" border=0/>
 
 Hub cluster is compact cluster 3 control nodes
 
