@@ -1,5 +1,7 @@
 # Red Hat Hypershift on BareMetal
 
+<img src="high-level-overview.png" style="width: 640px;" border=0/>
+
 Hub cluster is compact cluster 3 control nodes
 
 Has ODF installed although not required but some kind of storage will be needed for AI
