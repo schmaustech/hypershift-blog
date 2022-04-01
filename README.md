@@ -13,6 +13,32 @@ Has community versions Infrastructure Operator for Red Hat OpenShift (Assisted I
 
 <img src="hive.png" style="width: 257px;" border=1/>    <img src="infra-ai.png" style="width: 257px;" border=1/>
 
+~~~bash
+cat << EOF > ~/hiveconfig.yaml
+apiVersion: hive.openshift.io/v1
+kind: HiveConfig
+metadata:
+  name: hive
+spec:
+  logLevel: debug
+  targetNamespace: hive
+~~~
+
+~~~bash
+[bschmaus@provisioning ~]$ oc create -f hiveconfig.yaml 
+hiveconfig.hive.openshift.io/hive created
+~~~
+
+~~~bash
+$ oc get po -n hive
+NAME                                READY   STATUS    RESTARTS   AGE
+hive-clustersync-0                  1/1     Running   0          21m
+hive-controllers-76994cf6fd-cw6sr   1/1     Running   0          21m
+hiveadmission-9dcd68cf7-ffmzd       1/1     Running   0          21m
+hiveadmission-9dcd68cf7-m6sg5       1/1     Running   0          21m
+
+~~~
+
 Configure AI using the following yaml
 
 
@@ -84,6 +110,22 @@ spec:
 EOF
 ~~~
 
+~~~bash
+[bschmaus@provisioning ~]$ oc create -f agent_service_config-kni20.yaml
+agentserviceconfig.agent-install.openshift.io/agent created
+~~~
+
+~~~bash
+$ oc get po -n assisted-installer
+NAME                                       READY   STATUS    RESTARTS   AGE
+agentinstalladmission-77bf8b8b8f-kcr8m     1/1     Running   0          27m
+agentinstalladmission-77bf8b8b8f-ttxbg     1/1     Running   0          27m
+assisted-image-service-0                   1/1     Running   0          27m
+assisted-service-8876b7d45-9g2fb           2/2     Running   0          27m
+infrastructure-operator-76d4b9c58f-ghvds   1/1     Running   0          32m
+
+
+~~~
 
 Patch a storageclass to default that can be consumed by the Infrastructure Operator
 ~~~bash
