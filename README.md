@@ -323,6 +323,29 @@ $ echo $INFRAID
 6440f9b6-44c9-452a-a820-906c582290fe
 ~~~
 
+~~~bash
+$ nslookup
+> api.kni21.schmaustech.com
+Server:		192.168.0.10
+Address:	192.168.0.10#53
+
+Name:	api.kni21.schmaustech.com
+Address: 192.168.0.215
+Name:	api.kni21.schmaustech.com
+Address: 192.168.0.213
+Name:	api.kni21.schmaustech.com
+Address: 192.168.0.214
+
+> test.apps.kni21.schmaustech.com
+Server:		192.168.0.10
+Address:	192.168.0.10#53
+
+Name:	test.apps.kni21.schmaustech.com
+Address: 192.168.0.114
+Name:	test.apps.kni21.schmaustech.com
+Address: 192.168.0.113
+~~~
+
 
 ~~~bash
 cat << EOF > ~/hypershift-$CLUSTERNAME-hostedcluster.yaml
