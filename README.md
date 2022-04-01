@@ -8,12 +8,10 @@ Before we begin lets start by describing the existing environment of the hub OCP
 
 <img src="local-storage.png" style="width: 257px;" border=1/><img src="ODF2.png" style="width: 257px;" border=1/>
 
-
-
-Hub cluster is compact cluster 3 control nodes
-
 Has ODF installed although not required but some kind of storage will be needed for AI
 Has community versions Infrastructure Operator for Red Hat OpenShift (Assisted Installer) and Hive installed
+
+<img src="hive.png" style="width: 257px;" border=1/><img src="infra-ai.png" style="width: 257px;" border=1/>
 
 Configure AI using the following yaml
 
