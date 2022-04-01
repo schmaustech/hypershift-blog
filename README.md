@@ -318,9 +318,135 @@ cache-control: private
 ~~~
 
 ~~~bash
-$ INFRAID=$(oc get infraenv $INFRAENV -n $NAMESPACE -o json| jq -r .status.isoDownloadURL | awk -F/ '{print $NF}'| cut -d \? -f 1)
-$ echo $INFRAID
-6440f9b6-44c9-452a-a820-906c582290fe
+BMC_USERNAME=$(echo -n "admin" | base64 -w0)
+BMC_PASSWORD=$(echo -n "password" | base64 -w0)
+BMC_IP="192.168.0.10"
+WORKER="worker-0"
+BOOT_MAC_ADDRESS="52:54:00:3e:1b:76"
+UUID=1504e201-9385-4526-81e7-7d2c5f86791e
+REDFISH="redfish-virtualmedia+https://${BMC_IP}:8001/redfish/v1/Systems/${UUID}"
+~~~
+
+~~~bash
+cat << EOF > ~/secret-$WORKER.yaml
+apiVersion: v1
+data:
+  password: ${BMC_PASSWORD}
+  username: ${BMC_USERNAME}
+kind: Secret
+metadata:
+  name: ${WORKER}-bmc-secret
+  namespace: ${NAMESPACE}
+type: Opaque
+EOF
+~~~
+
+~~~bash
+$ oc create -f ~/secret-$WORKER.yaml
+secret/worker-0-bmc-secret created
+~~~
+
+~~~bash
+cat << EOF > ~/$CLUSTERNAME-$WORKER.yaml
+apiVersion: metal3.io/v1alpha1
+kind: BareMetalHost
+metadata:
+  name: ${WORKER}
+  namespace: ${NAMESPACE}
+  labels:
+    infraenvs.agent-install.openshift.io: ${CLUSTERNAME}
+  annotations:
+    inspect.metal3.io: disabled
+spec:
+  automatedCleaningMode: disabled
+  bmc:
+    disableCertificateVerification: True
+    address: ${REDFISH}
+    credentialsName: ${WORKER}-bmc-secret
+  bootMACAddress: ${BOOT_MAC_ADDRESS}
+  online: true
+EOF
+~~~
+
+~~~bash
+$ oc create -f ~/$CLUSTERNAME-$WORKER.yaml
+
+~~~
+
+~~~bash
+until oc get agent -n ${NAMESPACE} ${UUID} >/dev/null 2>&1 ; do sleep 1 ; done
+export AGENT=$(oc get agent -n ${NAMESPACE} ${UUID} -o name)
+
+oc patch ${AGENT} -n ${NAMESPACE} -p '{"spec":{"installation_disk_id":"/dev/sda","approved":true,"hostname":"$WORKER.$CLUSTERNAME.$DOMAIN","role":"worker"}}' --type merge
+
+~~~
+
+~~~bash
+BMC_USERNAME=$(echo -n "admin" | base64 -w0)
+BMC_PASSWORD=$(echo -n "password" | base64 -w0)
+BMC_IP="192.168.0.10"
+WORKER="worker-1"
+BOOT_MAC_ADDRESS="52:54:00:e2:c9:dd"
+UUID=c6828a00-169a-4578-a3ab-e62583b449be
+REDFISH="redfish-virtualmedia+https://${BMC_IP}:8001/redfish/v1/Systems/${UUID}"
+~~~
+
+~~~bash
+cat << EOF > ~/secret-$WORKER.yaml
+apiVersion: v1
+data:
+  password: ${BMC_PASSWORD}
+  username: ${BMC_USERNAME}
+kind: Secret
+metadata:
+  name: ${WORKER}-bmc-secret
+  namespace: ${NAMESPACE}
+type: Opaque
+EOF
+~~~
+
+~~~bash
+cat << EOF > ~/$CLUSTERNAME-$WORKER.yaml
+apiVersion: metal3.io/v1alpha1
+kind: BareMetalHost
+metadata:
+  name: ${WORKER}
+  namespace: ${NAMESPACE}
+  labels:
+    infraenvs.agent-install.openshift.io: ${CLUSTERNAME}
+  annotations:
+    inspect.metal3.io: disabled
+spec:
+  automatedCleaningMode: disabled
+  bmc:
+    disableCertificateVerification: True
+    address: ${REDFISH}
+    credentialsName: ${WORKER}-bmc-secret
+  bootMACAddress: ${BOOT_MAC_ADDRESS}
+  online: true
+EOF
+~~~
+
+~~~bash
+$ oc create -f ~/$CLUSTERNAME-$WORKER.yaml
+
+~~~
+
+~~~bash
+until oc get agent -n ${NAMESPACE} ${UUID} >/dev/null 2>&1 ; do sleep 1 ; done
+export AGENT=$(oc get agent -n ${NAMESPACE} ${UUID} -o name)
+
+oc patch ${AGENT} -n ${NAMESPACE} -p '{"spec":{"installation_disk_id":"/dev/sda","approved":true,"hostname":"$WORKER.$CLUSTERNAME.$DOMAIN","role":"worker"}}' --type merge
+
+~~~
+
+
+
+oc patch nodepool/${HOSTED}-workers -n ${CLUSTERS_NAMESPACE} -p '{"spec":{"nodeCount": 2}}' --type merge
+~~~
+
+~~~bash
+
 ~~~
 
 ~~~bash
@@ -369,7 +495,6 @@ spec:
     agent:
       agentNamespace: ${NAMESPACE}
     type: Agent
-  infraID: ${INFRAID}
   dns:
     baseDomain: ${BASEDOMAIN}
   services:
@@ -422,7 +547,7 @@ EOF
 ~~~
 
 ~~~bash
-$ hypershift create cluster agent --name $CLUSTERNAME --base-domain $BASEDOMAIN --pull-secret /working_dir/pull-secret.json  --ssh-key /working_dir/id_rsa.pub --agent-namespace $NAMESPACE --namespace $NAMESPACE --infra-id=$INFRAID
+$ hypershift create cluster agent --name $CLUSTERNAME --base-domain $BASEDOMAIN --pull-secret /working_dir/pull-secret.json  --ssh-key /working_dir/id_rsa.pub --agent-namespace $NAMESPACE --namespace $NAMESPACE
 2022-04-01T16:51:19Z	INFO	detected "192.168.0.213" from node "worker-0.kni20.schmaustech.com" as external-api-server-address
 2022-04-01T16:51:19Z	INFO	Applied Kube resource	{"kind": "Namespace", "namespace": "", "name": "kni21ns"}
 2022-04-01T16:51:19Z	INFO	Applied Kube resource	{"kind": "Secret", "namespace": "kni21ns", "name": "kni21-pull-secret"}
@@ -431,7 +556,6 @@ $ hypershift create cluster agent --name $CLUSTERNAME --base-domain $BASEDOMAIN 
 2022-04-01T16:51:19Z	INFO	Applied Kube resource	{"kind": "Secret", "namespace": "kni21ns", "name": "kni21-etcd-encryption-key"}
 2022-04-01T16:51:19Z	INFO	Applied Kube resource	{"kind": "Secret", "namespace": "kni21ns", "name": "kni21-ssh-key"}
 2022-04-01T16:51:19Z	INFO	Applied Kube resource	{"kind": "NodePool", "namespace": "kni21ns", "name": "kni21"}
-
 ~~~
 
 
