@@ -153,7 +153,7 @@ At this point we have all the pre-requisites configured for Hypershift to be dep
 
 ~~~bash
 NAMESPACE=kni21ns
-CLUSTERNAME=kni21cluster
+CLUSTERNAME=kni21
 INFRAENV=kni21infra
 BASEDOMAIN=pemlab.rdu2.redhat.com
 SSHKEY=~/.ssh/id_rsa.pub
