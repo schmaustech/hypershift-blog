@@ -155,10 +155,10 @@ At this point we have all the pre-requisites configured for Hypershift to be dep
 NAMESPACE=kni21ns
 CLUSTERNAME=kni21
 INFRAENV=kni21infra
-BASEDOMAIN=pemlab.rdu2.redhat.com
+BASEDOMAIN=schmaustech.com
 SSHKEY=~/.ssh/id_rsa.pub
 PULLSECRETNAME=${INFRAENV}-pullsecret
-MACHINE_CIDR_CLUSTER=10.11.176.0/24
+MACHINE_CIDR_CLUSTER=192.168.0.0/24
 OCP_RELEASE_VERSION="4.10.3"
 OCP_ARCH="x86_64"
 HYPERSHIFT_IMAGE=quay.io/hypershift/hypershift-operator:latest
@@ -402,11 +402,7 @@ EOF
 ~~~
 
 ~~~bash
-hostedcluster.hypershift.openshift.io/kni25 created
-~~~
-
-~~~bash
-cat << EOF ~/hypershift-$CLUSTERNAME-nodepool.yaml
+cat << EOF > ~/hypershift-$CLUSTERNAME-nodepool.yaml
 apiVersion: hypershift.openshift.io/v1alpha1
 kind: NodePool
 metadata:
@@ -426,5 +422,16 @@ EOF
 ~~~
 
 ~~~bash
-nodepool.hypershift.openshift.io/kni25-workers created
+$ hypershift create cluster agent --name $CLUSTERNAME --base-domain $BASEDOMAIN --pull-secret /working_dir/pull-secret.json  --ssh-key /working_dir/id_rsa.pub --agent-namespace $NAMESPACE --namespace $NAMESPACE --infra-id=$INFRAID
+2022-04-01T16:51:19Z	INFO	detected "192.168.0.213" from node "worker-0.kni20.schmaustech.com" as external-api-server-address
+2022-04-01T16:51:19Z	INFO	Applied Kube resource	{"kind": "Namespace", "namespace": "", "name": "kni21ns"}
+2022-04-01T16:51:19Z	INFO	Applied Kube resource	{"kind": "Secret", "namespace": "kni21ns", "name": "kni21-pull-secret"}
+2022-04-01T16:51:19Z	INFO	Applied Kube resource	{"kind": "", "namespace": "kni21ns", "name": "kni21"}
+2022-04-01T16:51:19Z	INFO	Applied Kube resource	{"kind": "Role", "namespace": "kni21ns", "name": "capi-provider-role"}
+2022-04-01T16:51:19Z	INFO	Applied Kube resource	{"kind": "Secret", "namespace": "kni21ns", "name": "kni21-etcd-encryption-key"}
+2022-04-01T16:51:19Z	INFO	Applied Kube resource	{"kind": "Secret", "namespace": "kni21ns", "name": "kni21-ssh-key"}
+2022-04-01T16:51:19Z	INFO	Applied Kube resource	{"kind": "NodePool", "namespace": "kni21ns", "name": "kni21"}
+
 ~~~
+
+
