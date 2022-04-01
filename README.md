@@ -1,6 +1,6 @@
 # Red Hat Hypershift on BareMetal
 
-<img src="high-level-overview.png" style="width: 900px;" border=0/>
+<img src="high-level-overview.png" style="width: 1000px;" border=0/>
 
 HyperShift is middleware for hosting OpenShift control planes at scale that solves for cost and time to provision, as well as portability cross cloud with strong separation of concerns between management and workloads. Clusters are fully compliant OpenShift Container Platform (OCP) clusters and are compatible with standard OCP and Kubernetes toolchains.  In the following blog I would like to show how one can enable and provision a Hypershift based cluster in OCP.
 
