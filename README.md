@@ -260,6 +260,12 @@ applied CustomResourceDefinition /nodepools.hypershift.openshift.io
 ~~~
 
 ~~~bash
+$ oc get po -n hypershift
+NAME                       READY   STATUS    RESTARTS   AGE
+operator-9c7f76468-2rzhl   1/1     Running   0          20m
+~~~
+
+~~~bash
 $ oc create namespace $NAMESPACE
 namespace/kni21ns created
 ~~~
@@ -354,7 +360,7 @@ metadata:
   name: ${WORKER}
   namespace: ${NAMESPACE}
   labels:
-    infraenvs.agent-install.openshift.io: ${CLUSTERNAME}
+    infraenvs.agent-install.openshift.io: ${INFRAENV}
   annotations:
     inspect.metal3.io: disabled
 spec:
@@ -370,15 +376,23 @@ EOF
 
 ~~~bash
 $ oc create -f ~/$CLUSTERNAME-$WORKER.yaml
-
+baremetalhost.metal3.io/worker-0 created
 ~~~
 
 ~~~bash
-until oc get agent -n ${NAMESPACE} ${UUID} >/dev/null 2>&1 ; do sleep 1 ; done
-export AGENT=$(oc get agent -n ${NAMESPACE} ${UUID} -o name)
+$ until oc get agent -n ${NAMESPACE} ${UUID} >/dev/null 2>&1 ; do sleep 1 ; done
+$ echo $?
+0
 
-oc patch ${AGENT} -n ${NAMESPACE} -p '{"spec":{"installation_disk_id":"/dev/sda","approved":true,"hostname":"$WORKER.$CLUSTERNAME.$DOMAIN","role":"worker"}}' --type merge
 
+$ oc get agent -n ${NAMESPACE} ${UUID}
+NAME                                   CLUSTER   APPROVED   ROLE          STAGE
+1504e201-9385-4526-81e7-7d2c5f86791e             true       auto-assign   
+
+$ AGENT=$(oc get agent -n ${NAMESPACE} ${UUID} -o name)
+
+$ oc patch ${AGENT} -n ${NAMESPACE} -p '{"spec":{"installation_disk_id":"/dev/sda","approved":true,"hostname":"$WORKER.$CLUSTERNAME.$DOMAIN","role":"worker"}}' --type merge
+agent.agent-install.openshift.io/1504e201-9385-4526-81e7-7d2c5f86791e patched
 ~~~
 
 ~~~bash
@@ -413,7 +427,7 @@ metadata:
   name: ${WORKER}
   namespace: ${NAMESPACE}
   labels:
-    infraenvs.agent-install.openshift.io: ${CLUSTERNAME}
+    infraenvs.agent-install.openshift.io: ${INFRAENV}
   annotations:
     inspect.metal3.io: disabled
 spec:
@@ -428,20 +442,26 @@ EOF
 ~~~
 
 ~~~bash
-$ oc create -f ~/$CLUSTERNAME-$WORKER.yaml
+$ oc create -f ~/secret-$WORKER.yaml
+secret/worker-1-bmc-secret created
 
+$ oc create -f ~/$CLUSTERNAME-$WORKER.yaml
+baremetalhost.metal3.io/worker-1 created
 ~~~
 
 ~~~bash
-until oc get agent -n ${NAMESPACE} ${UUID} >/dev/null 2>&1 ; do sleep 1 ; done
-export AGENT=$(oc get agent -n ${NAMESPACE} ${UUID} -o name)
+$ until oc get agent -n ${NAMESPACE} ${UUID} >/dev/null 2>&1 ; do sleep 1 ; done
+$ echo $?
+0
 
-oc patch ${AGENT} -n ${NAMESPACE} -p '{"spec":{"installation_disk_id":"/dev/sda","approved":true,"hostname":"$WORKER.$CLUSTERNAME.$DOMAIN","role":"worker"}}' --type merge
+$ AGENT=$(oc get agent -n ${NAMESPACE} ${UUID} -o name)
 
+$ oc patch ${AGENT} -n ${NAMESPACE} -p '{"spec":{"installation_disk_id":"/dev/sda","approved":true,"hostname":"$WORKER.$CLUSTERNAME.$DOMAIN","role":"worker"}}' --type merge
+agent.agent-install.openshift.io/c6828a00-169a-4578-a3ab-e62583b449be patched
 ~~~
 
 
-
+~~~bash
 oc patch nodepool/${HOSTED}-workers -n ${CLUSTERS_NAMESPACE} -p '{"spec":{"nodeCount": 2}}' --type merge
 ~~~
 
@@ -531,7 +551,7 @@ cat << EOF > ~/hypershift-$CLUSTERNAME-nodepool.yaml
 apiVersion: hypershift.openshift.io/v1alpha1
 kind: NodePool
 metadata:
-  name: ${CLUSTERNAME}-workers
+  name: ${CLUSTERNAME}
   namespace: ${NAMESPACE}
 spec:
   clusterName: ${CLUSTERNAME}
@@ -558,4 +578,11 @@ $ hypershift create cluster agent --name $CLUSTERNAME --base-domain $BASEDOMAIN 
 2022-04-01T16:51:19Z	INFO	Applied Kube resource	{"kind": "NodePool", "namespace": "kni21ns", "name": "kni21"}
 ~~~
 
+~~~bash
+$ oc get nodepool ${CLUSTERNAME} -n ${NAMESPACE}
+NAME    CLUSTER   DESIRED NODES   CURRENT NODES   AUTOSCALING   AUTOREPAIR   VERSION   UPDATINGVERSION   UPDATINGCONFIG   MESSAGE
+kni21   kni21     0                               False         False        4.10.7
 
+~~~bash
+oc patch nodepool/${CLUSTERNAME} -n ${NAMESPACE} -p '{"spec":{"nodeCount": 2}}' --type merge
+~~~
