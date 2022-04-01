@@ -4,14 +4,24 @@
 
 HyperShift is middleware for hosting OpenShift control planes at scale that solves for cost and time to provision, as well as portability cross cloud with strong separation of concerns between management and workloads. Clusters are fully compliant OpenShift Container Platform (OCP) clusters and are compatible with standard OCP and Kubernetes toolchains.  In the following blog I would like to show how one can enable and provision a Hypershift based cluster in OCP.
 
-Before we begin lets start by describing the existing environment of the hub OCP cluster.   This hub cluster is where the Hypershift operator will run and also the control plane of the secondary cluster we deploy with Hypershift.  It is a OCP 4.10.3 compact 3 node cluster running on baremetal.  The following operators have been installed for convience:
+Before we begin lets start by describing the existing environment of the hub OCP cluster.   This hub cluster is where the Hypershift operator will run and also the control plane of the secondary cluster we deploy with Hypershift.  It is a OCP 4.10.3 compact 3 node cluster running on baremetal.  The following operators have been installed for convience to provide the storage needed for Infrastructure Operator:
 
 <img src="local-storage.png" style="width: 257px;" border=1/>    <img src="ODF2.png" style="width: 257px;" border=1/>
 
-Has ODF installed although not required but some kind of storage will be needed for AI
-Has community versions Infrastructure Operator for Red Hat OpenShift (Assisted Installer) and Hive installed
+Along with installing and configuring the above operators we went ahead and set a default storageclass so that any requested persistent volume claims will be fulfilled automatically:
+
+~~~bash
+$ oc patch storageclass ocs-storagecluster-ceph-rbd -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+storageclass.storage.k8s.io/ocs-storagecluster-ceph-rbd patched
+~~~
+
+At this point we can now start to configure this hub cluster for use with Hypershift.  First we need to install two additional operators: Infrastructure Operator for Red Hat OpenShift and Hive.
 
 <img src="hive.png" style="width: 257px;" border=1/>    <img src="infra-ai.png" style="width: 257px;" border=1/>
+
+We will be using the community operator for both but in the future Red Hat Advanced Cluster Management for Kubernetes will actually integrate Hypershift and this will not be required.
+
+Once the Hive operator is installed create the basic Hive configiguration yaml below to start the Hive pods:
 
 ~~~bash
 cat << EOF > ~/hiveconfig.yaml
@@ -24,10 +34,14 @@ spec:
   targetNamespace: hive
 ~~~
 
+Once the yaml is created apply it to the hub cluster:
+
 ~~~bash
 [bschmaus@provisioning ~]$ oc create -f hiveconfig.yaml 
 hiveconfig.hive.openshift.io/hive created
 ~~~
+
+After a few minutes verify that the pods have started by issuing the following command:
 
 ~~~bash
 $ oc get po -n hive
@@ -39,8 +53,7 @@ hiveadmission-9dcd68cf7-m6sg5       1/1     Running   0          21m
 
 ~~~
 
-Configure AI using the following yaml
-
+Once Hive is confirmed to be operatational move onto the Infrastructure Operators configuration.  Here we need to create an agent service configuration file that will tell the operator how much storage we need for the various components like database and filesystem and it will also define what OpenShift versions to maintain:
 
 ~~~bash
 cat << EOF > ~/agentserviceconfig.yaml
@@ -110,10 +123,14 @@ spec:
 EOF
 ~~~
 
+Once the agent service configuration file is created apply it to the cluster:
+
 ~~~bash
 [bschmaus@provisioning ~]$ oc create -f agent_service_config-kni20.yaml
 agentserviceconfig.agent-install.openshift.io/agent created
 ~~~
+
+After a few minutes validate that the pods for the Infrastructure operator have started:
 
 ~~~bash
 $ oc get po -n assisted-installer
@@ -123,22 +140,16 @@ agentinstalladmission-77bf8b8b8f-ttxbg     1/1     Running   0          27m
 assisted-image-service-0                   1/1     Running   0          27m
 assisted-service-8876b7d45-9g2fb           2/2     Running   0          27m
 infrastructure-operator-76d4b9c58f-ghvds   1/1     Running   0          32m
-
-
 ~~~
 
-Patch a storageclass to default that can be consumed by the Infrastructure Operator
-~~~bash
-$ oc patch storageclass ocs-storagecluster-ceph-rbd -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
-storageclass.storage.k8s.io/ocs-storagecluster-ceph-rbd patched
-~~~
-
-Also configure the provisioning configuration to watch all namespaces
+With our two operators installed we can move onto patching the provisioning configuration to watch all namespaces:
 
 ~~~bash
 $ oc patch provisioning provisioning-configuration --type merge -p '{"spec":{"watchAllNamespaces": true}}'
 provisioning.metal3.io/provisioning-configuration patched
 ~~~
+
+At this point we have all the pre-requisites configured for Hypershift to be deployed so now we can proceed with deploying Hypershift on the hub cluster.
 
 ~~~bash
 NAMESPACE=kni25
