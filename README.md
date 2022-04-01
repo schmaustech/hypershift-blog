@@ -6,6 +6,8 @@ HyperShift is middleware for hosting OpenShift control planes at scale that solv
 
 Before we begin lets start by describing the existing environment of the hub OCP cluster.   This hub cluster is where the Hypershift operator will run and also the control plane of the secondary cluster we deploy with Hypershift.  It is a OCP 4.10.3 compact 3 node cluster running on baremetal.  The following operators have been installed for convience:
 
+<img src="local-storage.png" style="width: 257px;" border=0/><img src="ODF2.png" style="width: 257px;" border=0/>
+
 
 
 Hub cluster is compact cluster 3 control nodes
