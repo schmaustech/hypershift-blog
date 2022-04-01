@@ -259,5 +259,66 @@ applied CustomResourceDefinition /hostedcontrolplanes.hypershift.openshift.io
 applied CustomResourceDefinition /nodepools.hypershift.openshift.io
 ~~~
 
+~~~bash
+$ oc create namespace $NAMESPACE
+namespace/kni21ns created
+~~~
 
+~~~bash
+cat << EOF > ~/$PULLSECRETNAME.yaml
+apiVersion: v1
+kind: Secret
+type: kubernetes.io/dockerconfigjson
+metadata:
+  name: $PULLSECRETNAME
+  namespace: $NAMESPACE
+data:
+  .dockerconfigjson: $(cat /tmp/hypershift/pull-secret.json  | base64 -w0)
+EOF
+~~~
 
+~~~bash
+oc create -f ~/$PULLSECRETNAME.yaml
+secret/kni21infra-pullsecret created
+~~~
+
+~~~bash
+cat << EOF > ~/$INFRAENV.yaml
+apiVersion: agent-install.openshift.io/v1beta1
+kind: InfraEnv
+metadata:
+  name: $INFRAENV
+  namespace: $NAMESPACE
+spec:
+  pullSecretRef:
+    name: $PULLSECRETNAME
+  sshAuthorizedKey: $(cat $SSHKEY)
+EOF
+~~~
+
+~~~bash
+$ oc create -f ~/$INFRAENV.yaml
+infraenv.agent-install.openshift.io/kni21infra created
+~~~
+
+~~~bash
+$ oc get po -A|grep -vE 'Completed|Running'
+NAMESPACE                                          NAME                                                              READY   STATUS      RESTARTS   AGE
+
+$ oc get infraenv $INFRAENV -n $NAMESPACE -o json| jq -r .status.isoDownloadURL| xargs curl -kI
+HTTP/1.1 200 OK
+accept-ranges: bytes
+content-disposition: attachment; filename=6440f9b6-44c9-452a-a820-906c582290fe-discovery.iso
+content-length: 108984320
+content-type: application/octet-stream
+last-modified: Fri, 01 Apr 2022 14:09:52 GMT
+date: Fri, 01 Apr 2022 14:09:52 GMT
+set-cookie: 2d419d3e406946976a07970b1abc63e4=08f02ad56798ca18bf051a5067a87038; path=/; HttpOnly; Secure; SameSite=None
+cache-control: private
+~~~
+
+~~~bash
+$ INFRAID=$(oc get infraenv $INFRAENV -n $NAMESPACE -o json| jq -r .status.isoDownloadURL | awk -F/ '{print $NF}'| cut -d \? -f 1)
+$ echo $INFRAID
+6440f9b6-44c9-452a-a820-906c582290fe
+~~~
