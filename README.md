@@ -152,9 +152,9 @@ provisioning.metal3.io/provisioning-configuration patched
 At this point we have all the pre-requisites configured for Hypershift to be deployed so now we can proceed with deploying Hypershift on the hub cluster.
 
 ~~~bash
-NAMESPACE=kni25
-CLUSTERNAME=kni25
-INFRAENV=kni25infra
+NAMESPACE=kni21ns
+CLUSTERNAME=kni21cluster
+INFRAENV=kni21infra
 BASEDOMAIN=pemlab.rdu2.redhat.com
 SSHKEY=~/.ssh/id_rsa.pub
 PULLSECRETNAME=${INFRAENV}-pullsecret
@@ -162,21 +162,47 @@ MACHINE_CIDR_CLUSTER=10.11.176.0/24
 OCP_RELEASE_VERSION="4.10.3"
 OCP_ARCH="x86_64"
 HYPERSHIFT_IMAGE=quay.io/hypershift/hypershift-operator:latest
+KUBECONFIG=kubeconfig-kni20
+PULLSECRET=pull-secret.json
 ~~~
 
 ~~~bash
-$ mkdir /tmp/kube
-$ cp kubeconfig-kni27 /tmp/kubeconfig/
-$ cd /tmp/kubeconfig/
+$ mkdir /tmp/hypershift
+$ cp ~/$KUBECONFIG /tmp/hypershift/
+$ cp ~/$PULLSECRET /tmp/hypershift/
+$ cd /tmp/hypershift/
 ~~~
 
 ~~~bash
-$ alias hypershift="podman run --net host --rm --entrypoint /usr/bin/hypershift -e KUBECONFIG=/working_dir/kubeconfig-kni27 -v $HOME/.ssh:/root/.ssh -v /tmp/kube:/working_dir $HYPERSHIFT_IMAGE"
+$ podman login quay.io
+Username: bschmaus
+Password: 
+Login Succeeded!
+~~~
+
+~~~bash
+$ podman pull $HYPERSHIFT_IMAGE
+Trying to pull quay.io/hypershift/hypershift-operator:latest...
+
+Getting image source signatures
+Copying blob de9bc33d7337 skipped: already exists  
+Copying blob effc4ea612c8 skipped: already exists  
+Copying blob 495726a4e351 done  
+Copying blob ce753a481e9f done  
+Copying blob 3b83e4259b50 done  
+Copying blob 2de609a6fd40 done  
+Copying config 12be255359 done  
+Writing manifest to image destination
+Storing signatures
+12be2553593f133366e0b706c5bbcbab6e90c950b4bb1ea1feb1e25512791a9c
+~~~
+
+~~~bash
+$ alias hypershift="podman run --net host --rm --entrypoint /usr/bin/hypershift -e KUBECONFIG=/working_dir/$KUBECONFIG -v $HOME/.ssh:/root/.ssh -v /tmp/hypershift:/working_dir $HYPERSHIFT_IMAGE"
 ~~~
 
 ~~~bash
 $ hypershift install --hypershift-image $HYPERSHIFT_IMAGE
-WARN[0000] error mounting subscriptions, skipping entry in /usr/share/containers/mounts.conf: getting host subscription data: failed to read subscriptions from "/usr/share/rhel/secrets": open /usr/share/rhel/secrets/rhsm/rhsm.conf: permission denied
 created PriorityClass /hypershift-control-plane
 created PriorityClass /hypershift-etcd
 created PriorityClass /hypershift-api-critical
@@ -233,10 +259,5 @@ applied CustomResourceDefinition /hostedcontrolplanes.hypershift.openshift.io
 applied CustomResourceDefinition /nodepools.hypershift.openshift.io
 ~~~
 
-~~~bash
-$ PATCH='[
-{"op":"add","path":"/rules/-","value":{"apiGroups":["extensions.hive.openshift.io"],"resources":["agentclusterinstalls"],"verbs":["*"]}}, {"op":"add","path":"/rules/-","value":{"apiGroups":["hive.openshift.io"],"resources":["clusterdeployments"],"verbs":["*"]}},
-{"op":"add","path":"/rules/-","value":{"apiGroups":["cluster.open-cluster-management.io"],"resources":["managedclustersets/join"],"verbs":["create"]}}
- ]'
-~~~
+
 
