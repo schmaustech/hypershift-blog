@@ -329,7 +329,7 @@ $ oc create -f ~/$INFRAENV.yaml
 infraenv.agent-install.openshift.io/kni21infra created
 ~~~
 
-When the infrastructure environment is created it will proceed to create a discover iso for that environment.  To ensure that 
+When the infrastructure environment is created it will proceed to create a discovery iso for that environment.  To ensure that the discovery iso is created we need to check that the processes are completed and the iso exists.  We can achieve this by first confirming that we are not seeing any pods in a state other then Completed or Running.   If that looks good then we can further confirm by grabbing the iso download from the infrastructure environment and confirming the discovery iso is present.
 
 ~~~bash
 $ oc get po -A|grep -vE 'Completed|Running'
@@ -347,15 +347,19 @@ set-cookie: 2d419d3e406946976a07970b1abc63e4=08f02ad56798ca18bf051a5067a87038; p
 cache-control: private
 ~~~
 
+With the discovery iso present we can now configure the two baremetal hosts that will become the physical worker nodes for our Hypershift cluster kni21.  First lets again set some variables to make things easier.  These variables will include the BMC username, BMC password, BMC address, worker name, boot MAC address of worker node, UUID of worker node and the RedFish URL.  The UUID is not required in all RedFish enabled environments and depending on what type of hardware one is using (Dell/HP/SuperMicro/Etc) the RedFish URL could look slightly different as well.
+
 ~~~bash
 BMC_USERNAME=$(echo -n "admin" | base64 -w0)
 BMC_PASSWORD=$(echo -n "password" | base64 -w0)
 BMC_IP="192.168.0.10"
 WORKER="worker-0"
-BOOT_MAC_ADDRESS="52:54:00:3e:1b:76"
+BOOT_MAC_ADDRESS="52:54:00:ec:24:02"
 UUID=1504e201-9385-4526-81e7-7d2c5f86791e
 REDFISH="redfish-virtualmedia+https://${BMC_IP}:8001/redfish/v1/Systems/${UUID}"
 ~~~
+
+With our variables defined lets go ahead and create the secret yaml for the first worker:
 
 ~~~bash
 cat << EOF > ~/secret-$WORKER.yaml
@@ -371,10 +375,14 @@ type: Opaque
 EOF
 ~~~
 
+Next create the secret for the first worker on the hub cluster kni20:
+
 ~~~bash
 $ oc create -f ~/secret-$WORKER.yaml
 secret/worker-0-bmc-secret created
 ~~~
+
+Next create the baremetahost yaml file for the first worker:
 
 ~~~bash
 cat << EOF > ~/$CLUSTERNAME-$WORKER.yaml
@@ -398,17 +406,22 @@ spec:
 EOF
 ~~~
 
+And then create the baremetalhost for the first worker on the hub cluster kni20:
+
 ~~~bash
 $ oc create -f ~/$CLUSTERNAME-$WORKER.yaml
 baremetalhost.metal3.io/worker-0 created
 ~~~
 
+After we have created the first worker baremetalhost we should watch the agent until the worker appears.  We can do this with a until loop on oc get agent.
+
 ~~~bash
 $ until oc get agent -n ${NAMESPACE} ${UUID} >/dev/null 2>&1 ; do sleep 1 ; done
 $ echo $?
 0
+~~~
 
-
+~~~bash
 $ oc get agent -n ${NAMESPACE} ${UUID}
 NAME                                   CLUSTER   APPROVED   ROLE          STAGE
 1504e201-9385-4526-81e7-7d2c5f86791e             true       auto-assign   
@@ -424,7 +437,7 @@ BMC_USERNAME=$(echo -n "admin" | base64 -w0)
 BMC_PASSWORD=$(echo -n "password" | base64 -w0)
 BMC_IP="192.168.0.10"
 WORKER="worker-1"
-BOOT_MAC_ADDRESS="52:54:00:e2:c9:dd"
+BOOT_MAC_ADDRESS="52:54:00:f3:c4:62"
 UUID=c6828a00-169a-4578-a3ab-e62583b449be
 REDFISH="redfish-virtualmedia+https://${BMC_IP}:8001/redfish/v1/Systems/${UUID}"
 ~~~
