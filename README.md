@@ -460,15 +460,6 @@ $ oc patch ${AGENT} -n ${NAMESPACE} -p '{"spec":{"installation_disk_id":"/dev/sd
 agent.agent-install.openshift.io/c6828a00-169a-4578-a3ab-e62583b449be patched
 ~~~
 
-
-~~~bash
-oc patch nodepool/${HOSTED}-workers -n ${CLUSTERS_NAMESPACE} -p '{"spec":{"nodeCount": 2}}' --type merge
-~~~
-
-~~~bash
-
-~~~
-
 ~~~bash
 $ nslookup
 > api.kni21.schmaustech.com
@@ -585,4 +576,79 @@ kni21   kni21     0                               False         False        4.1
 
 ~~~bash
 oc patch nodepool/${CLUSTERNAME} -n ${NAMESPACE} -p '{"spec":{"nodeCount": 2}}' --type merge
+~~~
+
+~~~bash
+$ oc get nodepool ${CLUSTERNAME} -n ${NAMESPACE}
+NAME    CLUSTER   DESIRED NODES   CURRENT NODES   AUTOSCALING   AUTOREPAIR   VERSION   UPDATINGVERSION   UPDATINGCONFIG   MESSAGE
+kni21   kni21     2                               False 
+~~~
+
+~~~bash
+$ oc get pods -n ${NAMESPACE}-${CLUSTERNAME}
+NAME                                              READY   STATUS    RESTARTS   AGE
+capi-provider-7cfd7fd785-n4qzp                    1/1     Running   0          6m18s
+catalog-operator-666b598b7b-4w6f8                 2/2     Running   0          5m41s
+certified-operators-catalog-5869b59955-m2l5l      1/1     Running   0          5m43s
+cluster-api-7c879944f6-fpn5r                      1/1     Running   0          6m18s
+cluster-autoscaler-6fbc7b465c-kt6rl               1/1     Running   0          5m39s
+cluster-policy-controller-8467d64db5-p4vsq        1/1     Running   0          5m46s
+cluster-version-operator-5757c466c7-trwq8         1/1     Running   0          5m45s
+community-operators-catalog-d4646d4cf-79q27       1/1     Running   0          5m43s
+control-plane-operator-689d4f4b44-gtw7n           1/1     Running   0          6m17s
+etcd-0                                            1/1     Running   0          5m47s
+hosted-cluster-config-operator-59466cc47d-6qvs9   1/1     Running   0          5m44s
+ignition-server-7566c666bf-tmw9v                  1/1     Running   0          6m16s
+ingress-operator-695b4b78f-nf79g                  2/2     Running   0          5m45s
+konnectivity-agent-5794855958-cvs85               1/1     Running   0          5m47s
+konnectivity-server-5b86b5c944-s7bxq              1/1     Running   0          5m47s
+kube-apiserver-69b77cd898-pltps                   2/2     Running   0          5m47s
+kube-controller-manager-587879679c-lxpmq          1/1     Running   0          5m47s
+kube-scheduler-74f5cf9bd8-r6bqc                   1/1     Running   0          5m47s
+machine-approver-789674bd68-9zcmj                 1/1     Running   0          5m39s
+oauth-openshift-9b78fcf8b-rh5lb                   1/1     Running   0          3m56s
+olm-operator-6768fc984f-9w2r7                     2/2     Running   0          5m41s
+openshift-apiserver-5f57ccc8cd-k7ss2              2/2     Running   0          5m47s
+openshift-controller-manager-859644688f-fvhgn     1/1     Running   0          5m46s
+openshift-oauth-apiserver-57bb6484c7-qqjlv        1/1     Running   0          5m46s
+packageserver-68f897ffc9-k9v2j                    2/2     Running   0          5m41s
+redhat-marketplace-catalog-6b4bf87d95-skp55       1/1     Running   0          5m43s
+redhat-operators-catalog-f58ffd56-8g7lv           1/1     Running   0          5m43s
+
+~~~
+
+~~~bash
+$ oc extract -n ${NAMESPACE} secret/${CLUSTERNAME}-admin-kubeconfig --to=- > ${CLUSTERNAME}-kubeconfig
+# kubeconfig
+~~~
+
+~~~bash
+$  oc get co --kubeconfig=kni21-kubeconfig
+NAME                                       VERSION   AVAILABLE   PROGRESSING   DEGRADED   SINCE   MESSAGE
+console                                                                                           
+csi-snapshot-controller                                                                           
+dns                                                                                               
+image-registry                                                                                    
+ingress                                              False       True          True       6m17s   The "default" ingress controller reports Available=False: IngressControllerUnavailable: One or more status conditions indicate unavailable: DeploymentAvailable=False (DeploymentUnavailable: The deployment has Available status condition set to False (reason: MinimumReplicasUnavailable) with message: Deployment does not have minimum availability.)
+kube-apiserver                             4.10.7    True        False         False      6m46s   
+kube-controller-manager                    4.10.7    True        False         False      6m46s   
+kube-scheduler                             4.10.7    True        False         False      6m46s   
+kube-storage-version-migrator                                                                     
+monitoring                                                                                        
+network                                                                                           
+node-tuning                                                                                       
+openshift-apiserver                        4.10.7    True        False         False      6m46s   
+openshift-controller-manager               4.10.7    True        False         False      6m46s   
+openshift-samples                                                                                 
+operator-lifecycle-manager                 4.10.7    True        False         False      6m27s   
+operator-lifecycle-manager-catalog         4.10.7    True        False         False      6m36s   
+operator-lifecycle-manager-packageserver   4.10.7    True        False         False      6m46s   
+service-ca                                                                                        
+storage  
+~~~
+
+~~~bash
+$ oc get nodepool ${CLUSTERNAME} -n ${NAMESPACE}
+NAME    CLUSTER   DESIRED NODES   CURRENT NODES   AUTOSCALING   AUTOREPAIR   VERSION   UPDATINGVERSION   UPDATINGCONFIG   MESSAGE
+kni21   kni21     2                               False         False                  True              True             Minimum availability requires 2 replicas, current 0 available
 ~~~
