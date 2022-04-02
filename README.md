@@ -4,7 +4,7 @@
 
 HyperShift is middleware for hosting OpenShift control planes at scale that solves for cost and time to provision, as well as portability cross cloud with strong separation of concerns between management and workloads. Clusters are fully compliant OpenShift Container Platform (OCP) clusters and are compatible with standard OCP and Kubernetes toolchains.  In the following blog I would like to show how one can enable and provision a Hypershift based cluster in OCP.
 
-Before we begin lets start by describing the existing environment of the hub OCP cluster.   This hub cluster is where the Hypershift operator will run and also the control plane of the secondary cluster we deploy with Hypershift.  It is a OCP 4.10.3 compact 3 node cluster running on baremetal.  The following operators have been installed for convience to provide the storage needed for Infrastructure Operator:
+Before we begin lets start by describing the existing environment of the hub OCP cluster.   This hub cluster (kni20) is where the Hypershift operator will run and also the control plane of the secondary cluster we deploy with Hypershift.  It is a OCP 4.10.3 compact 3 node cluster running on baremetal.  The following operators have been installed for convience to provide the storage needed for Infrastructure Operator:
 
 <img src="local-storage.png" style="width: 257px;" border=1/>    <img src="ODF2.png" style="width: 257px;" border=1/>
 
@@ -15,13 +15,13 @@ $ oc patch storageclass ocs-storagecluster-ceph-rbd -p '{"metadata": {"annotatio
 storageclass.storage.k8s.io/ocs-storagecluster-ceph-rbd patched
 ~~~
 
-At this point we can now start to configure this hub cluster for use with Hypershift.  First we need to install two additional operators: Infrastructure Operator for Red Hat OpenShift and Hive.
+At this point we can now start to configure this hub cluster for use with Hypershift.  First we need to install two additional required operators: Infrastructure Operator for Red Hat OpenShift and Hive.
 
 <img src="hive.png" style="width: 257px;" border=1/>    <img src="infra-ai.png" style="width: 257px;" border=1/>
 
 We will be using the community operator for both but in the future Red Hat Advanced Cluster Management for Kubernetes will actually integrate Hypershift and this will not be required.
 
-Once the Hive operator is installed create the basic Hive configiguration yaml below to start the Hive pods:
+Once the Hive operator is installed create the basic Hive configiguration yaml below:
 
 ~~~bash
 cat << EOF > ~/hiveconfig.yaml
@@ -34,14 +34,14 @@ spec:
   targetNamespace: hive
 ~~~
 
-Once the yaml is created apply it to the hub cluster:
+Once the Hive config yaml is created apply it to the hub cluster to enable the running pods:
 
 ~~~bash
 [bschmaus@provisioning ~]$ oc create -f hiveconfig.yaml 
 hiveconfig.hive.openshift.io/hive created
 ~~~
 
-After a few minutes verify that the pods have started by issuing the following command:
+After a few minutes verify that the pods have started by issuing the following oc command:
 
 ~~~bash
 $ oc get po -n hive
@@ -53,7 +53,7 @@ hiveadmission-9dcd68cf7-m6sg5       1/1     Running   0          21m
 
 ~~~
 
-Once Hive is confirmed to be operatational move onto the Infrastructure Operators configuration.  Here we need to create an agent service configuration file that will tell the operator how much storage we need for the various components like database and filesystem and it will also define what OpenShift versions to maintain:
+If Hive is confirmed to be operatational move onto the Infrastructure Operators configuration.  Here we need to create an agent service configuration yaml that will tell the operator how much storage we need for the various components like database and filesystem and it will also define what OpenShift versions to maintain:
 
 ~~~bash
 cat << EOF > ~/agentserviceconfig.yaml
@@ -142,14 +142,14 @@ assisted-service-8876b7d45-9g2fb           2/2     Running   0          27m
 infrastructure-operator-76d4b9c58f-ghvds   1/1     Running   0          32m
 ~~~
 
-With our two operators installed we can move onto patching the provisioning configuration to watch all namespaces:
+With our two required operators installed we can move onto patching the provisioning configuration to watch all namespaces:
 
 ~~~bash
 $ oc patch provisioning provisioning-configuration --type merge -p '{"spec":{"watchAllNamespaces": true}}'
 provisioning.metal3.io/provisioning-configuration patched
 ~~~
 
-At this point we have all the pre-requisites configured for Hypershift to be deployed so now we can proceed with deploying Hypershift on the hub cluster.
+At this point we have completed all the pre-requisites configured for Hypershift to be deployed so now we can proceed with deploying Hypershift on the hub cluster.  To make deployment of Hypershift and our cluster easier lets go ahead and assign some basic variables that we can reuse during the rest of the installation process.  These variables include definitions like: namespace, cluster name, infrastructure environment, base domain, sshkey, pull-secret, machine CIDR, OCP release and arhitecture, Hypershift image location and kubeconfig of hub cluster.  Hypershift currently has to be installed via this method because there is no operator in Operator hub to deploy Hypershift.
 
 ~~~bash
 NAMESPACE=kni21ns
@@ -166,6 +166,8 @@ KUBECONFIG=kubeconfig-kni20
 PULLSECRET=pull-secret.json
 ~~~
 
+With our variables defined let move onto creating a temporary directory for our Hypershift install:
+
 ~~~bash
 $ mkdir /tmp/hypershift
 $ cp ~/$KUBECONFIG /tmp/hypershift/
@@ -173,12 +175,16 @@ $ cp ~/$PULLSECRET /tmp/hypershift/
 $ cd /tmp/hypershift/
 ~~~
 
+Next lets make sure we are logged into Quay.io:
+
 ~~~bash
 $ podman login quay.io
 Username: bschmaus
 Password: 
 Login Succeeded!
 ~~~
+
+Then lets pull the Hypershift image from Quay.io:
 
 ~~~bash
 $ podman pull $HYPERSHIFT_IMAGE
@@ -197,9 +203,13 @@ Storing signatures
 12be2553593f133366e0b706c5bbcbab6e90c950b4bb1ea1feb1e25512791a9c
 ~~~
 
+The Hypershift image that we pulled from Quay.io contains the Hypershift binary which we will use to install Hypershift operator into our hub cluster kni20.  To do this we want to use a combination of an alias with the podman run command below.  Note we are passing in the kubeconfig from kni20 so that the Hypershift binary is able to install on kni20.   
+
 ~~~bash
 $ alias hypershift="podman run --net host --rm --entrypoint /usr/bin/hypershift -e KUBECONFIG=/working_dir/$KUBECONFIG -v $HOME/.ssh:/root/.ssh -v /tmp/hypershift:/working_dir $HYPERSHIFT_IMAGE"
 ~~~
+
+With the hypershift alias set we can proceed to run the hypershift install command:
 
 ~~~bash
 $ hypershift install --hypershift-image $HYPERSHIFT_IMAGE
@@ -259,16 +269,22 @@ applied CustomResourceDefinition /hostedcontrolplanes.hypershift.openshift.io
 applied CustomResourceDefinition /nodepools.hypershift.openshift.io
 ~~~
 
+Once the installation completes we can validate that we have a hypershift namespace an a running operator within it:
+
 ~~~bash
 $ oc get po -n hypershift
 NAME                       READY   STATUS    RESTARTS   AGE
 operator-9c7f76468-2rzhl   1/1     Running   0          20m
 ~~~
 
+At this point in the procedure we are now ready to congfigure the requirements needed to deploy our Hypershift cluster kni21.   First lets create the namespace using the variable we defined above:
+
 ~~~bash
 $ oc create namespace $NAMESPACE
 namespace/kni21ns created
 ~~~
+
+With the namespace created we can move onto creating a pull-secret yaml file in that namespace:
 
 ~~~bash
 cat << EOF > ~/$PULLSECRETNAME.yaml
@@ -283,10 +299,14 @@ data:
 EOF
 ~~~
 
+Once the pull-secret yaml has been created proceed to create the custom resource:
+
 ~~~bash
 oc create -f ~/$PULLSECRETNAME.yaml
 secret/kni21infra-pullsecret created
 ~~~
+
+Next lets create a infrastructure environment yaml file referencing the pull-secret we just created and also consuming our sshkey:
 
 ~~~bash
 cat << EOF > ~/$INFRAENV.yaml
@@ -302,10 +322,14 @@ spec:
 EOF
 ~~~
 
+With the infrastructure environment created proceed to create the custom resource:
+
 ~~~bash
 $ oc create -f ~/$INFRAENV.yaml
 infraenv.agent-install.openshift.io/kni21infra created
 ~~~
+
+When the infrastructure environment is created it will proceed to create a discover iso for that environment.  To ensure that 
 
 ~~~bash
 $ oc get po -A|grep -vE 'Completed|Running'
