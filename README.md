@@ -421,16 +421,28 @@ $ echo $?
 0
 ~~~
 
+When the loop exits we can validate that the agent is listed by running the following command:
+
 ~~~bash
 $ oc get agent -n ${NAMESPACE} ${UUID}
 NAME                                   CLUSTER   APPROVED   ROLE          STAGE
 1504e201-9385-4526-81e7-7d2c5f86791e             true       auto-assign   
+~~~
 
+If the agent is indeed listed then we can move onto assign the agent name to a variable:
+
+~~~bash
 $ AGENT=$(oc get agent -n ${NAMESPACE} ${UUID} -o name)
+~~~
 
+With the agent variable populated lets go ahead and patch the agent with the installation disk, hostname and its role in the cluster:
+
+~~~bash
 $ oc patch ${AGENT} -n ${NAMESPACE} -p '{"spec":{"installation_disk_id":"/dev/sda","approved":true,"hostname":"'"$WORKER.$CLUSTERNAME.$BASEDOMAIN"'","role":"worker"}}' --type merge
 agent.agent-install.openshift.io/1504e201-9385-4526-81e7-7d2c5f86791e patched
 ~~~
+
+Now lets repeat the same steps for the second worker node by first assiging our variables:
 
 ~~~bash
 BMC_USERNAME=$(echo -n "admin" | base64 -w0)
@@ -441,6 +453,8 @@ BOOT_MAC_ADDRESS="52:54:00:f3:c4:62"
 UUID=c6828a00-169a-4578-a3ab-e62583b449be
 REDFISH="redfish-virtualmedia+https://${BMC_IP}:8001/redfish/v1/Systems/${UUID}"
 ~~~
+
+Next create the secret yam file for the second worker node:
 
 ~~~bash
 cat << EOF > ~/secret-$WORKER.yaml
@@ -455,6 +469,8 @@ metadata:
 type: Opaque
 EOF
 ~~~
+
+And then lets create the baremetal host yaml file for the second worker node:
 
 ~~~bash
 cat << EOF > ~/$CLUSTERNAME-$WORKER.yaml
@@ -478,6 +494,8 @@ spec:
 EOF
 ~~~
 
+And finally go ahead and create the custom resources for the second workers secret and baremetal host:
+
 ~~~bash
 $ oc create -f ~/secret-$WORKER.yaml
 secret/worker-1-bmc-secret created
@@ -485,6 +503,8 @@ secret/worker-1-bmc-secret created
 $ oc create -f ~/$CLUSTERNAME-$WORKER.yaml
 baremetalhost.metal3.io/worker-1 created
 ~~~
+
+Again we will run our until loop to wait for the agent to come online and then once it does assign the agent name to a variable and then patch the agent with the installation disk, hosname and role again:
 
 ~~~bash
 $ until oc get agent -n ${NAMESPACE} ${UUID} >/dev/null 2>&1 ; do sleep 1 ; done
@@ -497,102 +517,7 @@ $ oc patch ${AGENT} -n ${NAMESPACE} -p '{"spec":{"installation_disk_id":"/dev/sd
 agent.agent-install.openshift.io/c6828a00-169a-4578-a3ab-e62583b449be patched
 ~~~
 
-~~~bash
-$ nslookup
-> api.kni21.schmaustech.com
-Server:		192.168.0.10
-Address:	192.168.0.10#53
-
-Name:	api.kni21.schmaustech.com
-Address: 192.168.0.215
-Name:	api.kni21.schmaustech.com
-Address: 192.168.0.213
-Name:	api.kni21.schmaustech.com
-Address: 192.168.0.214
-
-> test.apps.kni21.schmaustech.com
-Server:		192.168.0.10
-Address:	192.168.0.10#53
-
-Name:	test.apps.kni21.schmaustech.com
-Address: 192.168.0.114
-Name:	test.apps.kni21.schmaustech.com
-Address: 192.168.0.113
-~~~
-
-
-~~~bash
-cat << EOF > ~/hypershift-$CLUSTERNAME-hostedcluster.yaml
-apiVersion: hypershift.openshift.io/v1alpha1
-kind: HostedCluster
-metadata:
-  name: ${CLUSTERNAME}
-  namespace: ${NAMESPACE}
-spec:
-  release:
-    image: "quay.io/openshift-release-dev/ocp-release:${OCP_RELEASE_VERSION}-${OCP_ARCH}"
-  pullSecret:
-    name: ${PULLSECRETNAME}
-  sshKey:
-    name: "${SSHKEY}"
-  networking:
-    serviceCIDR: "172.31.0.0/16"
-    podCIDR: "10.132.0.0/14"
-    machineCIDR: "${MACHINE_CIDR_CLUSTER}"
-  platform:
-    agent:
-      agentNamespace: ${NAMESPACE}
-    type: Agent
-  dns:
-    baseDomain: ${BASEDOMAIN}
-  services:
-  - service: APIServer
-    servicePublishingStrategy:
-      nodePort:
-        address: api.${CLUSTERNAME}.${BASEDOMAIN}
-      type: NodePort
-  - service: OAuthServer
-    servicePublishingStrategy:
-      nodePort:
-        address: api.${CLUSTERNAME}.${BASEDOMAIN}
-      type: NodePort
-  - service: OIDC
-    servicePublishingStrategy:
-      nodePort:
-        address: api.${CLUSTERNAME}.${BASEDOMAIN}
-      type: None
-  - service: Konnectivity
-    servicePublishingStrategy:
-      nodePort:
-        address: api.${CLUSTERNAME}.${BASEDOMAIN}
-      type: NodePort
-  - service: Ignition
-    servicePublishingStrategy:
-      nodePort:
-        address: api.${CLUSTERNAME}.${BASEDOMAIN}
-      type: NodePort
-EOF
-~~~
-
-~~~bash
-cat << EOF > ~/hypershift-$CLUSTERNAME-nodepool.yaml
-apiVersion: hypershift.openshift.io/v1alpha1
-kind: NodePool
-metadata:
-  name: ${CLUSTERNAME}
-  namespace: ${NAMESPACE}
-spec:
-  clusterName: ${CLUSTERNAME}
-  nodeCount: 0
-  management:
-    autoRepair: false
-    upgradeType: Replace
-  platform:
-    type: Agent
-  release:
-    image: "quay.io/openshift-release-dev/ocp-release:${OCP_RELEASE_VERSION}-${OCP_ARCH}"
-EOF
-~~~
+With the two worker baremetal hosts ready to be consumed we can move onto deploying the hypershift cluster.  To do this we will again refer to the hypershift alias we setup earlier in this blog and leverage hypershift pod image.  To create a cluster we need to execute the following syntax and pass in our clustername, basedomain, namespace and agent namespace:
 
 ~~~bash
 $ hypershift create cluster agent --name $CLUSTERNAME --base-domain $BASEDOMAIN --pull-secret /working_dir/pull-secret.json  --ssh-key /working_dir/id_rsa.pub --agent-namespace $NAMESPACE --namespace $NAMESPACE
@@ -688,4 +613,23 @@ storage
 $ oc get nodepool ${CLUSTERNAME} -n ${NAMESPACE}
 NAME    CLUSTER   DESIRED NODES   CURRENT NODES   AUTOSCALING   AUTOREPAIR   VERSION   UPDATINGVERSION   UPDATINGCONFIG   MESSAGE
 kni21   kni21     2                               False         False                  True              True             Minimum availability requires 2 replicas, current 0 available
+~~~
+
+~~~bash
+[bschmaus@provisioning hypershift]$ oc get pods -A --kubeconfig=kni21-kubeconfig
+NAMESPACE                                          NAME                                                      READY   STATUS    RESTARTS   AGE
+kube-system                                        kube-apiserver-proxy-worker-1.kni21.schmaustech.com       1/1     Running   0          3m39s
+openshift-cluster-node-tuning-operator             cluster-node-tuning-operator-b9bbddbbc-tszpl              0/1     Pending   0          22m
+openshift-cluster-samples-operator                 cluster-samples-operator-5654658bb7-pdgz8                 0/2     Pending   0          22m
+openshift-cluster-storage-operator                 cluster-storage-operator-866b994d5f-l5wq6                 0/1     Pending   0          22m
+openshift-cluster-storage-operator                 csi-snapshot-controller-operator-7b54b6b6cd-26b4w         0/1     Pending   0          22m
+openshift-console-operator                         console-operator-59bc6b4b5b-bxbww                         0/1     Pending   0          22m
+openshift-dns-operator                             dns-operator-6b8ff69477-m5wmv                             0/2     Pending   0          22m
+openshift-image-registry                           cluster-image-registry-operator-78b9f9fb8d-9rq6j          0/1     Pending   0          22m
+openshift-ingress                                  router-default-596896b59c-944jz                           0/1     Pending   0          22m
+openshift-ingress                                  router-default-596896b59c-qmkgv                           0/1     Pending   0          22m
+openshift-kube-storage-version-migrator-operator   kube-storage-version-migrator-operator-6bc9cdc5cd-c6zwp   0/1     Pending   0          22m
+openshift-monitoring                               cluster-monitoring-operator-c76dcf454-9p9sn               0/2     Pending   0          22m
+openshift-network-operator                         network-operator-f6885c48b-lcfhf                          1/1     Running   0          22m
+openshift-service-ca-operator                      service-ca-operator-5bddd9c968-9d6c6                      0/1     Pending   0          22m
 ~~~
