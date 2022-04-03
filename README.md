@@ -428,7 +428,7 @@ NAME                                   CLUSTER   APPROVED   ROLE          STAGE
 
 $ AGENT=$(oc get agent -n ${NAMESPACE} ${UUID} -o name)
 
-$ oc patch ${AGENT} -n ${NAMESPACE} -p '{"spec":{"installation_disk_id":"/dev/sda","approved":true,"hostname":"$WORKER.$CLUSTERNAME.$DOMAIN","role":"worker"}}' --type merge
+$ oc patch ${AGENT} -n ${NAMESPACE} -p '{"spec":{"installation_disk_id":"/dev/sda","approved":true,"hostname":"'"$WORKER.$CLUSTERNAME.$BASEDOMAIN"'","role":"worker"}}' --type merge
 agent.agent-install.openshift.io/1504e201-9385-4526-81e7-7d2c5f86791e patched
 ~~~
 
@@ -493,7 +493,7 @@ $ echo $?
 
 $ AGENT=$(oc get agent -n ${NAMESPACE} ${UUID} -o name)
 
-$ oc patch ${AGENT} -n ${NAMESPACE} -p '{"spec":{"installation_disk_id":"/dev/sda","approved":true,"hostname":"$WORKER.$CLUSTERNAME.$DOMAIN","role":"worker"}}' --type merge
+$ oc patch ${AGENT} -n ${NAMESPACE} -p '{"spec":{"installation_disk_id":"/dev/sda","approved":true,"hostname":"'"$WORKER.$CLUSTERNAME.$BASEDOMAIN"'","role":"worker"}}' --type merge
 agent.agent-install.openshift.io/c6828a00-169a-4578-a3ab-e62583b449be patched
 ~~~
 
