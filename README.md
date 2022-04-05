@@ -535,6 +535,7 @@ $ hypershift create cluster agent --name $CLUSTERNAME --base-domain $BASEDOMAIN 
 $ oc get nodepool ${CLUSTERNAME} -n ${NAMESPACE}
 NAME    CLUSTER   DESIRED NODES   CURRENT NODES   AUTOSCALING   AUTOREPAIR   VERSION   UPDATINGVERSION   UPDATINGCONFIG   MESSAGE
 kni21   kni21     0                               False         False        4.10.7
+~~~
 
 ~~~bash
 oc patch nodepool/${CLUSTERNAME} -n ${NAMESPACE} -p '{"spec":{"nodeCount": 2}}' --type merge
