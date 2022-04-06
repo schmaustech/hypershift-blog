@@ -38,7 +38,7 @@ EOF
 Once the Hive config yaml is created apply it to the hub cluster to enable the running pods:
 
 ~~~bash
-[bschmaus@provisioning ~]$ oc create -f hiveconfig.yaml 
+$ oc create -f hiveconfig.yaml 
 hiveconfig.hive.openshift.io/hive created
 ~~~
 
