@@ -21,7 +21,7 @@ At this point we can now start to configure this hub cluster for use with Hypers
 
 We will be using the community operator for both but in the future Red Hat Advanced Cluster Management for Kubernetes will actually integrate Hypershift and this will not be required.
 
-Once the Hive operator is installed create the basic Hive configiguration yaml below:
+Once the Hive operator is installed create the basic Hive configuration yaml below:
 
 ~~~bash
 cat << EOF > ~/hiveconfig.yaml
@@ -32,6 +32,7 @@ metadata:
 spec:
   logLevel: debug
   targetNamespace: hive
+EOF
 ~~~
 
 Once the Hive config yaml is created apply it to the hub cluster to enable the running pods:
