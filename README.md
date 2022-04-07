@@ -618,20 +618,88 @@ kni21   kni21     2                               False         False           
 ~~~
 
 ~~~bash
-[bschmaus@provisioning hypershift]$ oc get pods -A --kubeconfig=kni21-kubeconfig
-NAMESPACE                                          NAME                                                      READY   STATUS    RESTARTS   AGE
-kube-system                                        kube-apiserver-proxy-worker-1.kni21.schmaustech.com       1/1     Running   0          3m39s
-openshift-cluster-node-tuning-operator             cluster-node-tuning-operator-b9bbddbbc-tszpl              0/1     Pending   0          22m
-openshift-cluster-samples-operator                 cluster-samples-operator-5654658bb7-pdgz8                 0/2     Pending   0          22m
-openshift-cluster-storage-operator                 cluster-storage-operator-866b994d5f-l5wq6                 0/1     Pending   0          22m
-openshift-cluster-storage-operator                 csi-snapshot-controller-operator-7b54b6b6cd-26b4w         0/1     Pending   0          22m
-openshift-console-operator                         console-operator-59bc6b4b5b-bxbww                         0/1     Pending   0          22m
-openshift-dns-operator                             dns-operator-6b8ff69477-m5wmv                             0/2     Pending   0          22m
-openshift-image-registry                           cluster-image-registry-operator-78b9f9fb8d-9rq6j          0/1     Pending   0          22m
-openshift-ingress                                  router-default-596896b59c-944jz                           0/1     Pending   0          22m
-openshift-ingress                                  router-default-596896b59c-qmkgv                           0/1     Pending   0          22m
-openshift-kube-storage-version-migrator-operator   kube-storage-version-migrator-operator-6bc9cdc5cd-c6zwp   0/1     Pending   0          22m
-openshift-monitoring                               cluster-monitoring-operator-c76dcf454-9p9sn               0/2     Pending   0          22m
-openshift-network-operator                         network-operator-f6885c48b-lcfhf                          1/1     Running   0          22m
-openshift-service-ca-operator                      service-ca-operator-5bddd9c968-9d6c6                      0/1     Pending   0          22m
+$ oc get pods -A --kubeconfig=kni21-kubeconfig
+NAMESPACE                                          NAME                                                      READY   STATUS    RESTARTS        AGE
+kube-system                                        konnectivity-agent-dpj5n                                  1/1     Running   0               7m53s
+kube-system                                        konnectivity-agent-n4kf6                                  1/1     Running   0               8m4s
+kube-system                                        kube-apiserver-proxy-worker-0.kni21.schmaustech.com       1/1     Running   0               9m46s
+kube-system                                        kube-apiserver-proxy-worker-1.kni21.schmaustech.com       1/1     Running   0               9m25s
+openshift-cluster-node-tuning-operator             cluster-node-tuning-operator-65b86d9b9b-77zn2             1/1     Running   0               26m
+openshift-cluster-node-tuning-operator             tuned-vbpvx                                               1/1     Running   0               6m39s
+openshift-cluster-node-tuning-operator             tuned-x4nmm                                               1/1     Running   0               6m39s
+openshift-cluster-samples-operator                 cluster-samples-operator-948b7d55f-bnrcl                  2/2     Running   0               26m
+openshift-cluster-storage-operator                 cluster-storage-operator-86d98bdc5d-75lhh                 1/1     Running   1 (7m11s ago)   26m
+openshift-cluster-storage-operator                 csi-snapshot-controller-8544d7964b-2nwk5                  1/1     Running   0               6m39s
+openshift-cluster-storage-operator                 csi-snapshot-controller-8544d7964b-xxng9                  1/1     Running   0               6m39s
+openshift-cluster-storage-operator                 csi-snapshot-controller-operator-fcc99c578-7gtkg          1/1     Running   0               26m
+openshift-cluster-storage-operator                 csi-snapshot-webhook-c76dfc54d-jqqhj                      1/1     Running   0               7m23s
+openshift-cluster-storage-operator                 csi-snapshot-webhook-c76dfc54d-wp2vg                      1/1     Running   0               7m23s
+openshift-console-operator                         console-operator-787c499759-qqf2r                         1/1     Running   1 (6m ago)      26m
+openshift-console                                  console-797cd4885c-znb5k                                  1/1     Running   0               6m40s
+openshift-console                                  console-797cd4885c-zpdv6                                  1/1     Running   0               6m39s
+openshift-console                                  downloads-56bb8656db-mvgfg                                1/1     Running   0               7m28s
+openshift-console                                  downloads-56bb8656db-w4xpq                                1/1     Running   0               7m28s
+openshift-dns-operator                             dns-operator-9fbd86494-fqcdc                              2/2     Running   0               26m
+openshift-dns                                      dns-default-498l5                                         2/2     Running   0               6m40s
+openshift-dns                                      dns-default-vxpgr                                         2/2     Running   0               6m39s
+openshift-dns                                      node-resolver-frxhm                                       1/1     Running   0               6m40s
+openshift-dns                                      node-resolver-x2wwv                                       1/1     Running   0               6m39s
+openshift-image-registry                           cluster-image-registry-operator-59d49c88cf-678bf          1/1     Running   0               26m
+openshift-image-registry                           image-registry-6b55fbbd4-2pvl5                            1/1     Running   0               6m21s
+openshift-image-registry                           node-ca-485vv                                             1/1     Running   0               6m23s
+openshift-image-registry                           node-ca-w767j                                             1/1     Running   0               6m23s
+openshift-ingress-canary                           ingress-canary-8wgk6                                      1/1     Running   0               7m53s
+openshift-ingress-canary                           ingress-canary-vt5hf                                      1/1     Running   0               8m4s
+openshift-ingress                                  router-default-596896b59c-nlnkg                           1/1     Running   0               26m
+openshift-ingress                                  router-default-596896b59c-qj6mg                           1/1     Running   0               26m
+openshift-kube-storage-version-migrator-operator   kube-storage-version-migrator-operator-79d98c76bb-bg5dh   1/1     Running   1 (6m16s ago)   25m
+openshift-kube-storage-version-migrator            migrator-664f6b4cc7-v97vt                                 1/1     Running   0               7m29s
+openshift-monitoring                               alertmanager-main-0                                       6/6     Running   0               6m
+openshift-monitoring                               alertmanager-main-1                                       6/6     Running   0               6m
+openshift-monitoring                               cluster-monitoring-operator-5486d59b75-kc7ng              2/2     Running   0               26m
+openshift-monitoring                               grafana-ff8ff8857-pv74p                                   3/3     Running   0               5m59s
+openshift-monitoring                               kube-state-metrics-5dffbb6d67-b8cfg                       3/3     Running   0               6m6s
+openshift-monitoring                               node-exporter-k2cjj                                       2/2     Running   0               6m6s
+openshift-monitoring                               node-exporter-zc78q                                       2/2     Running   0               6m6s
+openshift-monitoring                               openshift-state-metrics-69b67595cb-gg6g4                  3/3     Running   0               6m6s
+openshift-monitoring                               prometheus-adapter-564b459fd4-8lj7h                       1/1     Running   0               4m44s
+openshift-monitoring                               prometheus-adapter-564b459fd4-wv6qd                       1/1     Running   0               4m44s
+openshift-monitoring                               prometheus-k8s-0                                          6/6     Running   0               5m56s
+openshift-monitoring                               prometheus-k8s-1                                          6/6     Running   0               5m56s
+openshift-monitoring                               prometheus-operator-5b57d65c9b-lb6pb                      2/2     Running   0               6m40s
+openshift-monitoring                               telemeter-client-c7b7cdb75-vb6c8                          3/3     Running   0               6m
+openshift-monitoring                               thanos-querier-6878d74c84-4prng                           6/6     Running   0               5m58s
+openshift-monitoring                               thanos-querier-6878d74c84-k2lb2                           6/6     Running   0               5m58s
+openshift-multus                                   multus-additional-cni-plugins-ftbdr                       1/1     Running   0               9m26s
+openshift-multus                                   multus-additional-cni-plugins-fv5h6                       1/1     Running   0               9m26s
+openshift-multus                                   multus-admission-controller-5zr6r                         2/2     Running   0               7m53s
+openshift-multus                                   multus-admission-controller-ppj9h                         2/2     Running   0               8m4s
+openshift-multus                                   multus-dvl2v                                              1/1     Running   0               9m26s
+openshift-multus                                   multus-h77hw                                              1/1     Running   0               9m26s
+openshift-multus                                   network-metrics-daemon-2tdfc                              2/2     Running   0               9m25s
+openshift-multus                                   network-metrics-daemon-pwg92                              2/2     Running   0               9m25s
+openshift-network-diagnostics                      network-check-source-65cbf8c547-c7zqt                     1/1     Running   0               9m12s
+openshift-network-diagnostics                      network-check-target-bl8sw                                1/1     Running   0               9m11s
+openshift-network-diagnostics                      network-check-target-rc9wk                                1/1     Running   0               9m11s
+openshift-network-operator                         network-operator-779fd555b-9xnq7                          1/1     Running   0               26m
+openshift-sdn                                      sdn-4fl62                                                 2/2     Running   0               9m12s
+openshift-sdn                                      sdn-controller-9wktp                                      2/2     Running   0               9m12s
+openshift-sdn                                      sdn-controller-g2fgg                                      2/2     Running   0               9m12s
+openshift-sdn                                      sdn-lqbb6                                                 2/2     Running   0               9m12s
+openshift-service-ca-operator                      service-ca-operator-5687654cb9-s9p2c                      1/1     Running   1 (5m58s ago)   26m
+openshift-service-ca                               service-ca-6694d7d4fd-9f8rm                               1/1     Running   0               7m22s
+~~~
+
+
+~~~bash
+$ oc get nodes -A --kubeconfig=kni21-kubeconfig
+NAME                             STATUS   ROLES    AGE   VERSION
+worker-0.kni21.schmaustech.com   Ready    worker   15m   v1.23.5+9ce5071
+worker-1.kni21.schmaustech.com   Ready    worker   14m   v1.23.5+9ce5071
+~~~
+
+~~~bash
+$ oc get nodepool ${CLUSTERNAME} -n ${NAMESPACE}
+NAME    CLUSTER   DESIRED NODES   CURRENT NODES   AUTOSCALING   AUTOREPAIR   VERSION   UPDATINGVERSION   UPDATINGCONFIG   MESSAGE
+kni21   kni21     2               2               False         False        4.10.9 
 ~~~
