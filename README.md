@@ -518,7 +518,7 @@ $ oc patch ${AGENT} -n ${NAMESPACE} -p '{"spec":{"installation_disk_id":"/dev/sd
 agent.agent-install.openshift.io/c6828a00-169a-4578-a3ab-e62583b449be patched
 ~~~
 
-With the two worker baremetal hosts ready to be consumed we can move onto deploying the hypershift cluster.  To do this we will again refer to the hypershift alias we setup earlier in this blog and leverage hypershift pod image.  To create a cluster we need to execute the following syntax and pass in our clustername, basedomain, namespace and agent namespace:
+With the two worker baremetal hosts ready to be consumed we can move onto deploying the hypershift cluster.  To do this we will again refer to the hypershift alias we setup earlier in this blog and leverage the hypershift pod image.  To create a cluster we need to execute the following syntax and pass in our clustername, basedomain, namespace and agent namespace:
 
 ~~~bash
 $ hypershift create cluster agent --name $CLUSTERNAME --base-domain $BASEDOMAIN --pull-secret /working_dir/pull-secret.json  --ssh-key /working_dir/id_rsa.pub --agent-namespace $NAMESPACE --namespace $NAMESPACE
@@ -532,21 +532,29 @@ $ hypershift create cluster agent --name $CLUSTERNAME --base-domain $BASEDOMAIN 
 2022-04-01T16:51:19Z	INFO	Applied Kube resource	{"kind": "NodePool", "namespace": "kni21ns", "name": "kni21"}
 ~~~
 
+This begins the cluster creation process but before we look at the pods coming up let first observe that the nodepool was created but it has 0 desired nodes:
+
 ~~~bash
 $ oc get nodepool ${CLUSTERNAME} -n ${NAMESPACE}
 NAME    CLUSTER   DESIRED NODES   CURRENT NODES   AUTOSCALING   AUTOREPAIR   VERSION   UPDATINGVERSION   UPDATINGCONFIG   MESSAGE
 kni21   kni21     0                               False         False        4.10.7
 ~~~
 
+Lets go ahead and scale the nodepool to have 2 nodes:
+
 ~~~bash
 oc patch nodepool/${CLUSTERNAME} -n ${NAMESPACE} -p '{"spec":{"nodeCount": 2}}' --type merge
 ~~~
+
+Once we scale the nodepool we can observe nothing has changed however the scaling has started processes in the backhground that will consume the two workers that we added above.
 
 ~~~bash
 $ oc get nodepool ${CLUSTERNAME} -n ${NAMESPACE}
 NAME    CLUSTER   DESIRED NODES   CURRENT NODES   AUTOSCALING   AUTOREPAIR   VERSION   UPDATINGVERSION   UPDATINGCONFIG   MESSAGE
 kni21   kni21     2                               False 
 ~~~
+
+Now lets focus back on the cluster itself.  If we look in the following namespace made up of both our original namespace and clustername we can see that the control plane of a new cluster is running:
 
 ~~~bash
 $ oc get pods -n ${NAMESPACE}-${CLUSTERNAME}
@@ -578,13 +586,16 @@ openshift-oauth-apiserver-57bb6484c7-qqjlv        1/1     Running   0          5
 packageserver-68f897ffc9-k9v2j                    2/2     Running   0          5m41s
 redhat-marketplace-catalog-6b4bf87d95-skp55       1/1     Running   0          5m43s
 redhat-operators-catalog-f58ffd56-8g7lv           1/1     Running   0          5m43s
-
 ~~~
+
+Seeing that the control plane is running we can go ahead and extract the kubeconfig for that cluster:
 
 ~~~bash
 $ oc extract -n ${NAMESPACE} secret/${CLUSTERNAME}-admin-kubeconfig --to=- > ${CLUSTERNAME}-kubeconfig
 # kubeconfig
 ~~~
+
+With the kubeconfig extracted we can use it to see the status of the cluster operators of our new Hypershift cluster.  At this point though we should be seeing only partial operators being available:
 
 ~~~bash
 $  oc get co --kubeconfig=kni21-kubeconfig
@@ -611,11 +622,15 @@ service-ca
 storage  
 ~~~
 
+If we check back on our nodepool we can see that the status has changed and the updating version and config are set to true now:
+
 ~~~bash
 $ oc get nodepool ${CLUSTERNAME} -n ${NAMESPACE}
 NAME    CLUSTER   DESIRED NODES   CURRENT NODES   AUTOSCALING   AUTOREPAIR   VERSION   UPDATINGVERSION   UPDATINGCONFIG   MESSAGE
 kni21   kni21     2                               False         False                  True              True             Minimum availability requires 2 replicas, current 0 available
 ~~~
+
+If we wait a little bit longer for the cluster to instantiate and then look at all the running pods across all cluster namespaces we can now see that everything is up and operational:
 
 ~~~bash
 $ oc get pods -A --kubeconfig=kni21-kubeconfig
@@ -690,6 +705,7 @@ openshift-service-ca-operator                      service-ca-operator-5687654cb
 openshift-service-ca                               service-ca-6694d7d4fd-9f8rm                               1/1     Running   0               7m22s
 ~~~
 
+We can also validate that the worker nodes have joined the cluster and are in a ready state:
 
 ~~~bash
 $ oc get nodes -A --kubeconfig=kni21-kubeconfig
@@ -698,8 +714,39 @@ worker-0.kni21.schmaustech.com   Ready    worker   15m   v1.23.5+9ce5071
 worker-1.kni21.schmaustech.com   Ready    worker   14m   v1.23.5+9ce5071
 ~~~
 
+And if we check back on our nodepool we can see we have indeed 2 nodes in the pool:
+
 ~~~bash
 $ oc get nodepool ${CLUSTERNAME} -n ${NAMESPACE}
 NAME    CLUSTER   DESIRED NODES   CURRENT NODES   AUTOSCALING   AUTOREPAIR   VERSION   UPDATINGVERSION   UPDATINGCONFIG   MESSAGE
 kni21   kni21     2               2               False         False        4.10.9 
 ~~~
+
+And finally if we check our cluster operators again on the Hypershift cluster we can finally see that they too are all online and available:
+
+~~~bash
+$ oc get co --kubeconfig=kni21-kubeconfig
+NAME                                       VERSION   AVAILABLE   PROGRESSING   DEGRADED   SINCE   MESSAGE
+console                                    4.10.9    True        False         False      4m26s   
+csi-snapshot-controller                    4.10.9    True        False         False      3m10s   
+dns                                        4.10.9    True        False         False      2m4s    
+image-registry                             4.10.9    True        False         False      88s     
+ingress                                    4.10.9    True        False         False      118s    
+kube-apiserver                             4.10.9    True        False         False      23m     
+kube-controller-manager                    4.10.9    True        False         False      23m     
+kube-scheduler                             4.10.9    True        False         False      23m     
+kube-storage-version-migrator              4.10.9    True        False         False      4m2s    
+monitoring                                 4.10.9    True        False         False      40s     
+network                                    4.10.9    True        False         False      3m22s   
+node-tuning                                4.10.9    True        False         False      2m1s    
+openshift-apiserver                        4.10.9    True        False         False      23m     
+openshift-controller-manager               4.10.9    True        False         False      23m     
+openshift-samples                          4.10.9    True        False         False      96s     
+operator-lifecycle-manager                 4.10.9    True        False         False      22m     
+operator-lifecycle-manager-catalog         4.10.9    True        False         False      23m     
+operator-lifecycle-manager-packageserver   4.10.9    True        False         False      23m     
+service-ca                                 4.10.9    True        False         False      3m59s   
+storage                                    4.10.9    True        False         False      3m49s   
+~~~
+
+Hopefully this gives a preview of how Hypershift can be used to deploy a cluster where the control plane is inside of an existing OpenShift cluster and then the workers are on real baremetal.   As I mentioned earlier in the blog Hypershift will eventually be wrapped into Red Hat Advanced Cluster Management to make things easier for trying Hypershift out.
