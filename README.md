@@ -4,7 +4,7 @@
 
 HyperShift is middleware for hosting OpenShift control planes at scale that solves for cost and time to provision, as well as portability cross cloud with strong separation of concerns between management and workloads. Clusters are fully compliant OpenShift Container Platform (OCP) clusters and are compatible with standard OCP and Kubernetes toolchains.  In the following blog I would like to show how one can enable and provision a Hypershift based cluster in OCP.
 
-Before we begin lets start by describing the existing environment of the hub OCP cluster.   This hub cluster (kni20) is where the Hypershift operator will run and also the control plane of the secondary cluster we deploy with Hypershift.  It is a OCP 4.10.3 compact 3 node cluster running on baremetal.  The following operators have been installed for convience to provide the storage needed for Infrastructure Operator:
+Before we begin lets start by describing the existing environment of the hub OCP cluster.   This hub cluster (kni20) is where the Hypershift operator will run and also the control plane of the secondary cluster we deploy with Hypershift.  The hub cluster is a OCP 4.10.3 compact 3 node cluster running on baremetal with OpenShift-SDN.  The following operators have been installed for convience to provide the storage needed for Infrastructure Operator:
 
 <img src="local-storage.png" style="width: 257px;" border=1/>    <img src="ODF2.png" style="width: 257px;" border=1/>
 
@@ -15,11 +15,11 @@ $ oc patch storageclass ocs-storagecluster-ceph-rbd -p '{"metadata": {"annotatio
 storageclass.storage.k8s.io/ocs-storagecluster-ceph-rbd patched
 ~~~
 
-At this point we can now start to configure this hub cluster for use with Hypershift.  First we need to install two additional required operators: Infrastructure Operator for Red Hat OpenShift and Hive.
+At this point we can now start to configure this hub cluster for use with Hypershift.  First we need to install two additional required operators: Infrastructure Operator for Red Hat OpenShift and Hive.  We can install those from OperatorHub in the console.
 
 <img src="hive.png" style="width: 257px;" border=1/>    <img src="infra-ai.png" style="width: 257px;" border=1/>
 
-We will be using the community operator for both but in the future Red Hat Advanced Cluster Management for Kubernetes will actually integrate Hypershift and this will not be required.
+We will be using the community operator for both but in the future Red Hat Advanced Cluster Management for Kubernetes will actually integrate Hypershift and this will not be required as the Red Hat equivalents are pulled in when installing RHACM.
 
 Once the Hive operator is installed create the basic Hive configuration yaml below:
 
@@ -35,7 +35,7 @@ spec:
 EOF
 ~~~
 
-Once the Hive config yaml is created apply it to the hub cluster to enable the running pods:
+Applu the Hive config yaml to the hub cluster to enable the running Hive component pods:
 
 ~~~bash
 $ oc create -f hiveconfig.yaml 
@@ -54,7 +54,7 @@ hiveadmission-9dcd68cf7-m6sg5       1/1     Running   0          21m
 
 ~~~
 
-If Hive is confirmed to be operatational move onto the Infrastructure Operators configuration.  Here we need to create an agent service configuration yaml that will tell the operator how much storage we need for the various components like database and filesystem and it will also define what OpenShift versions to maintain:
+If Hive is confirmed to be operatational move onto the Infrastructure Operators configuration.  Here we need to create an agent service configuration custom resource that will tell the operator how much storage we need for the various components like database and filesystem and it will also define what OpenShift versions to maintain:
 
 ~~~bash
 cat << EOF > ~/agentserviceconfig.yaml
@@ -143,14 +143,14 @@ assisted-service-8876b7d45-9g2fb           2/2     Running   0          27m
 infrastructure-operator-76d4b9c58f-ghvds   1/1     Running   0          32m
 ~~~
 
-With our two required operators installed we can move onto patching the provisioning configuration to watch all namespaces:
+With our two required operators installed we can move onto patching the provisioning configuration to watch all namespaces.  This ensures that the baremetal hosts we are adding in a different namespace will get picked up:
 
 ~~~bash
 $ oc patch provisioning provisioning-configuration --type merge -p '{"spec":{"watchAllNamespaces": true}}'
 provisioning.metal3.io/provisioning-configuration patched
 ~~~
 
-At this point we have completed all the pre-requisites configured for Hypershift to be deployed so now we can proceed with deploying Hypershift on the hub cluster.  To make deployment of Hypershift and our cluster easier lets go ahead and assign some basic variables that we can reuse during the rest of the installation process.  These variables include definitions like: namespace, cluster name, infrastructure environment, base domain, sshkey, pull-secret, machine CIDR, OCP release and arhitecture, Hypershift image location and kubeconfig of hub cluster.  Hypershift currently has to be installed via this method because there is no operator in Operator hub to deploy Hypershift.
+At this point we have completed all the pre-requisites required for Hypershift to be deployed so now we can proceed with deploying Hypershift on the hub cluster.  To make deployment of Hypershift and our cluster easier lets go ahead and assign some basic variables that we can reuse during the rest of the installation process.  These variables include definitions like: Hypershift namespace, Hypershift cluster name, infrastructure environment, base domain, sshkey, pull-secret, machine CIDR, OCP release and arhitecture, Hypershift image location and kubeconfig of hub cluster.  Hypershift currently has to be installed via a container method because there is no operator in Operator hub to deploy Hypershift.
 
 ~~~bash
 NAMESPACE=kni21ns
@@ -167,7 +167,7 @@ KUBECONFIG=kubeconfig-kni20
 PULLSECRET=pull-secret.json
 ~~~
 
-With our variables defined let move onto creating a temporary directory for our Hypershift install:
+With our variables defined let move onto creating a temporary directory for our Hypershift install, copy in our kubeconfig and pull-secret:
 
 ~~~bash
 $ mkdir /tmp/hypershift
@@ -210,7 +210,7 @@ The Hypershift image that we pulled from Quay.io contains the Hypershift binary 
 $ alias hypershift="podman run --net host --rm --entrypoint /usr/bin/hypershift -e KUBECONFIG=/working_dir/$KUBECONFIG -v $HOME/.ssh:/root/.ssh -v /tmp/hypershift:/working_dir $HYPERSHIFT_IMAGE"
 ~~~
 
-With the hypershift alias set we can proceed to run the hypershift install command:
+With the hypershift alias set we can proceed to run the hypershift install command.  The output should look very similar to that below:
 
 ~~~bash
 $ hypershift install --hypershift-image $HYPERSHIFT_IMAGE
@@ -270,7 +270,7 @@ applied CustomResourceDefinition /hostedcontrolplanes.hypershift.openshift.io
 applied CustomResourceDefinition /nodepools.hypershift.openshift.io
 ~~~
 
-Once the installation completes we can validate that we have a hypershift namespace an a running operator within it:
+Once the installation of the operator completes we can validate that we have a hypershift namespace an a running operator within it:
 
 ~~~bash
 $ oc get po -n hypershift
@@ -285,7 +285,7 @@ $ oc create namespace $NAMESPACE
 namespace/kni21ns created
 ~~~
 
-With the namespace created we can move onto creating a pull-secret yaml file in that namespace:
+With the namespace created we can proceed in creating a pull-secret yaml file for that namespace:
 
 ~~~bash
 cat << EOF > ~/$PULLSECRETNAME.yaml
@@ -300,7 +300,7 @@ data:
 EOF
 ~~~
 
-Once the pull-secret yaml has been created proceed to create the custom resource:
+Once the pull-secret yaml has been created apply the custom resource:
 
 ~~~bash
 oc create -f ~/$PULLSECRETNAME.yaml
@@ -323,7 +323,7 @@ spec:
 EOF
 ~~~
 
-With the infrastructure environment created proceed to create the custom resource:
+With the infrastructure environment yaml created proceed to create the custom resource:
 
 ~~~bash
 $ oc create -f ~/$INFRAENV.yaml
@@ -333,7 +333,7 @@ infraenv.agent-install.openshift.io/kni21infra created
 When the infrastructure environment is created it will proceed to create a discovery iso for that environment.  To ensure that the discovery iso is created we need to check that the processes are completed and the iso exists.  We can achieve this by first confirming that we are not seeing any pods in a state other then Completed or Running.   If that looks good then we can further confirm by grabbing the iso download from the infrastructure environment and confirming the discovery iso is present.
 
 ~~~bash
-$ oc get po -A|grep -vE 'Completed|Running'
+$ oc get po -n $NAMESPACE|grep -vE 'Completed|Running'
 NAMESPACE                                          NAME                                                              READY   STATUS      RESTARTS   AGE
 
 $ oc get infraenv $INFRAENV -n $NAMESPACE -o json| jq -r .status.isoDownloadURL| xargs curl -kI
@@ -348,7 +348,7 @@ set-cookie: 2d419d3e406946976a07970b1abc63e4=08f02ad56798ca18bf051a5067a87038; p
 cache-control: private
 ~~~
 
-With the discovery iso present we can now configure the two baremetal hosts that will become the physical worker nodes for our Hypershift cluster kni21.  First lets again set some variables to make things easier.  These variables will include the BMC username, BMC password, BMC address, worker name, boot MAC address of worker node, UUID of worker node and the RedFish URL.  The UUID is not required in all RedFish enabled environments and depending on what type of hardware one is using (Dell/HP/SuperMicro/Etc) the RedFish URL could look slightly different as well.
+With the discovery iso present we can now configure the two baremetal hosts that will become the physical worker nodes for our Hypershift cluster kni21.  First lets again set some variables to make things easier.  These variables will include the BMC username, BMC password, BMC address, worker name, boot MAC address of worker node, UUID of worker node and the RedFish URL.  The UUID is not required in all RedFish enabled environments and depending on what type of hardware one is using (Dell/HP/SuperMicro/Etc) the RedFish URL could look slightly different as well so modify accordingly.
 
 ~~~bash
 BMC_USERNAME=$(echo -n "admin" | base64 -w0)
@@ -430,7 +430,7 @@ NAME                                   CLUSTER   APPROVED   ROLE          STAGE
 1504e201-9385-4526-81e7-7d2c5f86791e             true       auto-assign   
 ~~~
 
-If the agent is indeed listed then we can move onto assign the agent name to a variable:
+If the agent is indeed listed then we can move onto assign the agent name to the agent variable:
 
 ~~~bash
 $ AGENT=$(oc get agent -n ${NAMESPACE} ${UUID} -o name)
@@ -471,7 +471,7 @@ type: Opaque
 EOF
 ~~~
 
-And then lets create the baremetal host yaml file for the second worker node:
+And then create the baremetal host yaml file for the second worker node:
 
 ~~~bash
 cat << EOF > ~/$CLUSTERNAME-$WORKER.yaml
@@ -495,7 +495,7 @@ spec:
 EOF
 ~~~
 
-And finally go ahead and create the custom resources for the second workers secret and baremetal host:
+And finally go ahead and create the custom resources for the second workers secret and baremetal host on the kni20 hub cluster:
 
 ~~~bash
 $ oc create -f ~/secret-$WORKER.yaml
@@ -532,7 +532,7 @@ $ hypershift create cluster agent --name $CLUSTERNAME --base-domain $BASEDOMAIN 
 2022-04-01T16:51:19Z	INFO	Applied Kube resource	{"kind": "NodePool", "namespace": "kni21ns", "name": "kni21"}
 ~~~
 
-This begins the cluster creation process but before we look at the pods coming up let first observe that the nodepool was created but it has 0 desired nodes:
+This begins the cluster creation process but before we look at the pods coming up lets first observe the nodepool that was created.  We should see that it has 0 desired nodes listed:
 
 ~~~bash
 $ oc get nodepool ${CLUSTERNAME} -n ${NAMESPACE}
@@ -540,13 +540,13 @@ NAME    CLUSTER   DESIRED NODES   CURRENT NODES   AUTOSCALING   AUTOREPAIR   VER
 kni21   kni21     0                               False         False        4.10.7
 ~~~
 
-Lets go ahead and scale the nodepool to have 2 nodes:
+We actually want that nodepool to consume the two workers we configured so go ahead and scale the nodepool to have 2 nodes:
 
 ~~~bash
 oc patch nodepool/${CLUSTERNAME} -n ${NAMESPACE} -p '{"spec":{"nodeCount": 2}}' --type merge
 ~~~
 
-Once we scale the nodepool we can observe nothing has changed however the scaling has started processes in the backhground that will consume the two workers that we added above.
+Once we scale the nodepool we can observe nothing has changed however the scaling has started processes in the backhground that will consume the two workers that we added above.  We will check back on this in a bit.
 
 ~~~bash
 $ oc get nodepool ${CLUSTERNAME} -n ${NAMESPACE}
@@ -554,7 +554,7 @@ NAME    CLUSTER   DESIRED NODES   CURRENT NODES   AUTOSCALING   AUTOREPAIR   VER
 kni21   kni21     2                               False 
 ~~~
 
-Now lets focus back on the cluster itself.  If we look in the following namespace made up of both our original namespace and clustername we can see that the control plane of a new cluster is running:
+Now lets focus back on the cluster itself.  If we look in the following namespace made up of both our original namespace and clustername variables we can see that the control plane of a new cluster is running:
 
 ~~~bash
 $ oc get pods -n ${NAMESPACE}-${CLUSTERNAME}
@@ -595,7 +595,7 @@ $ oc extract -n ${NAMESPACE} secret/${CLUSTERNAME}-admin-kubeconfig --to=- > ${C
 # kubeconfig
 ~~~
 
-With the kubeconfig extracted we can use it to see the status of the cluster operators of our new Hypershift cluster.  At this point though we should be seeing only partial operators being available:
+With the kubeconfig extracted we can use it to see the status of the cluster operators of our new Hypershift cluster.  At this point though we should be seeing only partial operators being available.  That is the cluster is still in progress of installing.
 
 ~~~bash
 $  oc get co --kubeconfig=kni21-kubeconfig
@@ -605,19 +605,19 @@ csi-snapshot-controller
 dns                                                                                               
 image-registry                                                                                    
 ingress                                              False       True          True       6m17s   The "default" ingress controller reports Available=False: IngressControllerUnavailable: One or more status conditions indicate unavailable: DeploymentAvailable=False (DeploymentUnavailable: The deployment has Available status condition set to False (reason: MinimumReplicasUnavailable) with message: Deployment does not have minimum availability.)
-kube-apiserver                             4.10.7    True        False         False      6m46s   
-kube-controller-manager                    4.10.7    True        False         False      6m46s   
-kube-scheduler                             4.10.7    True        False         False      6m46s   
+kube-apiserver                             4.10.9    True        False         False      6m46s   
+kube-controller-manager                    4.10.9    True        False         False      6m46s   
+kube-scheduler                             4.10.9    True        False         False      6m46s   
 kube-storage-version-migrator                                                                     
 monitoring                                                                                        
 network                                                                                           
 node-tuning                                                                                       
-openshift-apiserver                        4.10.7    True        False         False      6m46s   
-openshift-controller-manager               4.10.7    True        False         False      6m46s   
+openshift-apiserver                        4.10.9    True        False         False      6m46s   
+openshift-controller-manager               4.10.9    True        False         False      6m46s   
 openshift-samples                                                                                 
-operator-lifecycle-manager                 4.10.7    True        False         False      6m27s   
-operator-lifecycle-manager-catalog         4.10.7    True        False         False      6m36s   
-operator-lifecycle-manager-packageserver   4.10.7    True        False         False      6m46s   
+operator-lifecycle-manager                 4.10.9    True        False         False      6m27s   
+operator-lifecycle-manager-catalog         4.10.9    True        False         False      6m36s   
+operator-lifecycle-manager-packageserver   4.10.9    True        False         False      6m46s   
 service-ca                                                                                        
 storage  
 ~~~
@@ -630,7 +630,7 @@ NAME    CLUSTER   DESIRED NODES   CURRENT NODES   AUTOSCALING   AUTOREPAIR   VER
 kni21   kni21     2                               False         False                  True              True             Minimum availability requires 2 replicas, current 0 available
 ~~~
 
-If we wait a little bit longer for the cluster to instantiate and then look at all the running pods across all cluster namespaces we can now see that everything is up and operational:
+If we wait a little bit longer for the cluster to instantiate and then look at all the running pods across all cluster namespaces but using the kubeconfig we extracted we can now see that everything is up and operational:
 
 ~~~bash
 $ oc get pods -A --kubeconfig=kni21-kubeconfig
