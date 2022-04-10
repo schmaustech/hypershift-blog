@@ -81,17 +81,6 @@ spec:
     resources:
       requests:
         storage: 10Gi
-  mustGatherImages:
-    - name: cnv
-      openshiftVersion: '4.8'
-      url: >-
-        registry.redhat.io/container-native-virtualization/cnv-must-gather-rhel8:v2.6.5
-    - name: ocs
-      openshiftVersion: '4.8'
-      url: registry.redhat.io/ocs4/ocs-must-gather-rhel8
-    - name: lso
-      openshiftVersion: '4.8'
-      url: registry.redhat.io/openshift4/ose-local-storage-mustgather-rhel8
   osImages:
     - cpuArchitecture: x86_64
       openshiftVersion: '4.8'
