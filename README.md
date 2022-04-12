@@ -15,46 +15,13 @@ $ oc patch storageclass ocs-storagecluster-ceph-rbd -p '{"metadata": {"annotatio
 storageclass.storage.k8s.io/ocs-storagecluster-ceph-rbd patched
 ~~~
 
-At this point we can now start to configure this hub cluster for use with Hypershift.  First we need to install two additional required operators: Infrastructure Operator for Red Hat OpenShift and Hive.  We can install those from OperatorHub in the console.
+At this point we can now start to configure this hub cluster for use with Hypershift.  First we need to install one additional required operator: Infrastructure Operator for Red Hat OpenShift.  We can install it from OperatorHub in the console.
 
-<img src="hive.png" style="width: 257px;" border=1/>    <img src="infra-ai.png" style="width: 257px;" border=1/>
+<img src="infra-ai.png" style="width: 257px;" border=1/>
 
-We will be using the community operator for both but in the future Red Hat Advanced Cluster Management for Kubernetes will actually integrate Hypershift and this will not be required as the Red Hat equivalents are pulled in when installing RHACM.
+We will be using the community operator here but in the future Red Hat Advanced Cluster Management for Kubernetes will actually integrate Hypershift and this will not be required as the Red Hat equivalents are pulled in when installing RHACM.
 
-Once the Hive operator is installed create the basic Hive configuration yaml below:
-
-~~~bash
-cat << EOF > ~/hiveconfig.yaml
-apiVersion: hive.openshift.io/v1
-kind: HiveConfig
-metadata:
-  name: hive
-spec:
-  logLevel: debug
-  targetNamespace: hive
-EOF
-~~~
-
-Applu the Hive config yaml to the hub cluster to enable the running Hive component pods:
-
-~~~bash
-$ oc create -f hiveconfig.yaml 
-hiveconfig.hive.openshift.io/hive created
-~~~
-
-After a few minutes verify that the pods have started by issuing the following oc command:
-
-~~~bash
-$ oc get po -n hive
-NAME                                READY   STATUS    RESTARTS   AGE
-hive-clustersync-0                  1/1     Running   0          21m
-hive-controllers-76994cf6fd-cw6sr   1/1     Running   0          21m
-hiveadmission-9dcd68cf7-ffmzd       1/1     Running   0          21m
-hiveadmission-9dcd68cf7-m6sg5       1/1     Running   0          21m
-
-~~~
-
-If Hive is confirmed to be operatational move onto the Infrastructure Operators configuration.  Here we need to create an agent service configuration custom resource that will tell the operator how much storage we need for the various components like database and filesystem and it will also define what OpenShift versions to maintain:
+Once the Infrastructure Operator for Red Hat Openshift is installed we can proceed with configuring it.  Here we need to create an agent service configuration custom resource that will tell the operator how much storage we need for the various components like database and filesystem and it will also define what OpenShift versions to maintain:
 
 ~~~bash
 cat << EOF > ~/agentserviceconfig.yaml
@@ -132,7 +99,7 @@ assisted-service-8876b7d45-9g2fb           2/2     Running   0          27m
 infrastructure-operator-76d4b9c58f-ghvds   1/1     Running   0          32m
 ~~~
 
-With our two required operators installed we can move onto patching the provisioning configuration to watch all namespaces.  This ensures that the baremetal hosts we are adding in a different namespace will get picked up:
+With our required operator installed we can move onto patching the provisioning configuration to watch all namespaces.  This ensures that the baremetal hosts we are adding in a different namespace will get picked up:
 
 ~~~bash
 $ oc patch provisioning provisioning-configuration --type merge -p '{"spec":{"watchAllNamespaces": true}}'
